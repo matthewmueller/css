@@ -11,7 +11,7 @@ WIP CSS lexer and parser for Go. Intended to be used for manipulating stylesheet
 
 ## Similar
 
-- [tdewolfe/parse](https://github.com/tdewolff/parse): Most popular. Low-level streaming grammar [makes writing codemods difficult](https://github.com/otaxhu/go-cssmodules/blob/dfc8953ab6c19678072ee85ae68bf8ff76e388e9/cssmodules.go#L124-L166). Doesn't parse selectors. Looks primarily intended for minification, rather than codemods.
+- [tdewolfe/parse](https://github.com/tdewolff/parse): Most popular. Low-level streaming grammar makes writing codemods [difficult](https://github.com/otaxhu/go-cssmodules/blob/dfc8953ab6c19678072ee85ae68bf8ff76e388e9/cssmodules.go#L124-L166). Doesn't parse selectors. Looks primarily intended for minification, rather than codemods.
 - [benpjohnson/css](https://github.com/benbjohnson/css): Almost what we want. Doesn't parse selectors. Hasn't been updated in 10 years.
 - [gorilla/css](https://github.com/gorilla/css): Just a scanner, there's no parser.
 
