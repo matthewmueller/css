@@ -64,6 +64,8 @@ const (
 	StarEqual    Type = "*="
 	TildeEqual   Type = "~="
 	PipeEqual    Type = "|="
+	Slash        Type = "/"
+	Raw          Type = "raw"     //
 	String       Type = "string"  // "string" or 'string'
 	Comment      Type = "comment" // /* comment */ or // comment
 )

@@ -90,6 +90,14 @@ func (l *Lexer) Peak(nth int) token.Token {
 	return l.peaked[nth-1]
 }
 
+func (l *Lexer) Unexpected() error {
+	token := l.Token
+	if len(l.peaked) > 0 {
+		token = l.peaked[0]
+	}
+	return fmt.Errorf("unexpected token %s (%d:%d)", token.String(), token.Line, token.Start)
+}
+
 // Use -1 to indicate the end of the file
 const eof = -1
 
@@ -148,6 +156,23 @@ func initialState(l *Lexer) (t token.Type) {
 			l.step()
 		}
 		return token.Identifier
+	case l.cp == '/':
+		l.step()
+		if l.cp == '*' {
+			l.step()
+			return commentState(l)
+		}
+		return token.Slash
+	case isDash(l.cp):
+		l.step()
+		if isAlpha(l.cp) {
+			l.step()
+			for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
+				l.step()
+			}
+			return token.Identifier
+		}
+		return token.Dash
 	case l.cp == '@':
 		l.step()
 		return token.At
@@ -188,6 +213,18 @@ func initialState(l *Lexer) (t token.Type) {
 	case l.cp == '~':
 		l.step()
 		return token.Tilde
+	case l.cp == '@':
+		l.step()
+		return token.At
+	case l.cp == '"':
+		l.step()
+		return stringState(l, '"')
+	case l.cp == '\'':
+		l.step()
+		return stringState(l, '\'')
+	case l.cp == ';':
+		l.step()
+		return token.Semicolon
 	default:
 		l.step()
 		for l.cp != '{' && l.cp != eof {
@@ -211,12 +248,29 @@ func blockState(l *Lexer) token.Type {
 			l.step()
 		}
 		return token.Space
+	case l.cp == '/':
+		l.step()
+		if l.cp == '*' {
+			l.step()
+			return commentState(l)
+		}
+		return token.Slash
 	case isAlpha(l.cp):
 		l.step()
 		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
 			l.step()
 		}
 		return token.Identifier
+	case l.cp == '_':
+		l.step()
+		if isAlpha(l.cp) {
+			l.step()
+			for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
+				l.step()
+			}
+			return token.Identifier
+		}
+		return l.unexpected()
 	case l.cp == '*':
 		l.step()
 		return token.Star
@@ -242,6 +296,10 @@ func blockState(l *Lexer) token.Type {
 		l.step()
 		l.pushState(blockState)
 		return token.OpenCurly
+	case l.cp == '[':
+		l.step()
+		l.pushState(bracketState)
+		return token.OpenBracket
 	case l.cp == '%':
 		l.step()
 		return token.Percent
@@ -264,10 +322,19 @@ func blockState(l *Lexer) token.Type {
 	case l.cp == '\'':
 		l.step()
 		return stringState(l, '\'')
+	case l.cp == '!':
+		l.step()
+		return token.Exclamation
 	case l.cp == '(':
 		l.step()
-		l.pushState(parenState)
+		l.pushState(functionState)
 		return token.OpenParen
+	case l.cp == '>':
+		l.step()
+		return token.GreaterThan
+	case l.cp == '+':
+		l.step()
+		return token.Plus
 	default:
 		l.step()
 		for l.cp != '}' && l.cp != eof {
@@ -335,6 +402,17 @@ func parenState(l *Lexer) token.Type {
 	case l.cp == '+':
 		l.step()
 		return token.Plus
+	case l.cp == '/':
+		l.step()
+		if l.cp == '*' {
+			l.step()
+			return commentState(l)
+		}
+		return token.Slash
+	case l.cp == '[':
+		l.step()
+		l.pushState(bracketState)
+		return token.OpenBracket
 	default:
 		l.step()
 		for l.cp != ')' && l.cp != eof {
@@ -342,6 +420,36 @@ func parenState(l *Lexer) token.Type {
 		}
 		l.popState()
 		return l.unexpected()
+	}
+}
+
+func functionState(l *Lexer) token.Type {
+	switch {
+	case l.cp == eof:
+		return l.unexpected()
+	case l.cp == ')':
+		l.step()
+		l.popState()
+		return token.CloseParen
+	case isSpace(l.cp):
+		l.step()
+		for isSpace(l.cp) {
+			l.step()
+		}
+		return token.Space
+	case l.cp == ',':
+		l.step()
+		return token.Comma
+	case l.cp == '(':
+		l.step()
+		l.pushState(functionState)
+		return token.OpenParen
+	default:
+		l.step()
+		for l.cp != ')' && l.cp != ',' && l.cp != '(' && !isSpace(l.cp) && l.cp != eof {
+			l.step()
+		}
+		return token.Raw
 	}
 }
 
@@ -368,6 +476,7 @@ func bracketState(l *Lexer) token.Type {
 	case l.cp == '^':
 		l.step()
 		if l.cp == '=' {
+			l.step()
 			return token.CaretEqual
 		}
 		return l.unexpected()
@@ -396,6 +505,41 @@ func bracketState(l *Lexer) token.Type {
 	case l.cp == '\'':
 		l.step()
 		return stringState(l, '\'')
+	case l.cp == '/':
+		l.step()
+		if l.cp == '*' {
+			l.step()
+			return commentState(l)
+		}
+		return token.Slash
+	case l.cp == '*':
+		l.step()
+		if l.cp == '=' {
+			l.step()
+			return token.StarEqual
+		}
+		return l.unexpected()
+	case l.cp == '~':
+		l.step()
+		if l.cp == '=' {
+			l.step()
+			return token.TildeEqual
+		}
+		return l.unexpected()
+	case l.cp == '|':
+		l.step()
+		if l.cp == '=' {
+			l.step()
+			return token.PipeEqual
+		}
+		return l.unexpected()
+	case l.cp == '$':
+		l.step()
+		if l.cp == '=' {
+			l.step()
+			return token.DollarEqual
+		}
+		return l.unexpected()
 	default:
 		l.step()
 		for l.cp != ']' && l.cp != eof {
@@ -405,60 +549,6 @@ func bracketState(l *Lexer) token.Type {
 		return l.unexpected()
 	}
 }
-
-// func functionState(l *Lexer) token.Type {
-// 	switch {
-// 	case l.cp == eof:
-// 		return l.unexpected()
-// 	case l.cp == ')':
-// 		l.step()
-// 		l.popState()
-// 		return token.CloseParen
-// 	case isSpace(l.cp):
-// 		l.step()
-// 		for isSpace(l.cp) {
-// 			l.step()
-// 		}
-// 		return token.Space
-// 	case isLowerAlpha(l.cp):
-// 		l.step()
-// 		for isLowerAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
-// 			l.step()
-// 		}
-// 		return token.Identifier
-// 	case l.cp == ',':
-// 		l.step()
-// 		return token.Comma
-// 	case isNumeric(l.cp):
-// 		l.step()
-// 		for isNumeric(l.cp) || l.cp == '.' {
-// 			l.step()
-// 		}
-// 		return token.Number
-// 	case l.cp == '%':
-// 		l.step()
-// 		return token.Percent
-// 	case l.cp == '-':
-// 		l.step()
-// 		return token.Dash
-// 	case l.cp == '+':
-// 		l.step()
-// 		return token.Plus
-// 	case l.cp == '"':
-// 		l.step()
-// 		return stringState(l, '"')
-// 	case l.cp == '\'':
-// 		l.step()
-// 		return stringState(l, '\'')
-// 	default:
-// 		l.step()
-// 		for l.cp != ')' && l.cp != eof {
-// 			l.step()
-// 		}
-// 		l.popState()
-// 		return l.unexpected()
-// 	}
-// }
 
 func stringState(l *Lexer, end rune) (t token.Type) {
 	for {
@@ -510,6 +600,26 @@ func hexState(l *Lexer) token.Type {
 		l.step()
 	}
 	return token.Hex
+}
+
+func commentState(l *Lexer) token.Type {
+	for {
+		switch {
+		case l.cp == eof:
+			return l.unexpected()
+		case l.cp == '*':
+			l.step()
+			if l.cp == '/' {
+				l.step()
+				return token.Comment
+			}
+		case l.cp == '\n':
+			l.line++
+			l.step()
+		default:
+			l.step()
+		}
+	}
 }
 
 func isAlpha(cp rune) bool {
