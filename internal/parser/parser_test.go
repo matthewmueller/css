@@ -2,18 +2,21 @@ package parser_test
 
 import (
 	"testing"
+
+	"github.com/matthewmueller/css/internal/parser"
+	"github.com/matthewmueller/diff"
 )
 
 // var update = flag.Bool("update", false, "update golden files")
 
-// func equal(t *testing.T, input, expected string) {
-// 	t.Helper()
-// 	t.Run(input, func(t *testing.T) {
-// 		t.Helper()
-// 		actual := parser.Print(input, input)
-// 		diff.TestString(t, actual, expected)
-// 	})
-// }
+func equal(t *testing.T, input, expected string) {
+	t.Helper()
+	t.Run(input, func(t *testing.T) {
+		t.Helper()
+		actual := parser.Print(input, input)
+		diff.TestString(t, actual, expected)
+	})
+}
 
 // func equalAST(t *testing.T, input string, expected ast.Node) {
 // 	t.Helper()
@@ -58,7 +61,7 @@ import (
 // }
 
 func TestSample(t *testing.T) {
-	// equal(t, `hello <span>world</span>`, `hello <span>world</span>`)
+	equal(t, `body { margin: 0 }`, `body { margin: 0 }`)
 }
 
 func TestFile(t *testing.T) {

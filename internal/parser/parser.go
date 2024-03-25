@@ -114,6 +114,8 @@ func (p *Parser) parseStylesheet() (*ast.Stylesheet, error) {
 
 func (p *Parser) parseRule() (ast.Rule, error) {
 	switch {
+	case p.Is(token.Dot, token.Hash, token.Identifier, token.OpenBracket, token.Star):
+		return p.parseStyleRule()
 	// case p.Accept(token.Text), p.Accept(token.Space):
 	// 	return p.parseText()
 	// case p.Accept(token.LessThan):
@@ -124,5 +126,138 @@ func (p *Parser) parseRule() (ast.Rule, error) {
 	// 	}, nil
 	default:
 		return nil, p.unexpected("rule")
+	}
+}
+
+func (p *Parser) parseStyleRule() (*ast.StyleRule, error) {
+	selectors, err := p.parseSelectors()
+	if err != nil {
+		return nil, err
+	}
+	declarations, err := p.parseDeclarations()
+	if err != nil {
+		return nil, err
+	}
+	return &ast.StyleRule{
+		Selectors:    selectors,
+		Declarations: declarations,
+	}, nil
+}
+
+func (p *Parser) parseSelectors() (selectors []*ast.Selector, err error) {
+	for !p.Is(token.OpenCurly) {
+		selector, err := p.parseSelector()
+		if err != nil {
+			return nil, err
+		}
+		selectors = append(selectors, selector)
+	}
+	return selectors, nil
+}
+
+func (p *Parser) parseSelector() (*ast.Selector, error) {
+	selector := &ast.Selector{}
+	for !p.Is(token.Comma, token.OpenCurly) {
+		switch {
+		case p.Accept(token.Identifier):
+			selector.Components = append(selector.Components, &ast.ElementComponent{
+				Name: p.Text(),
+			})
+		case p.Accept(token.Space):
+			// Ignore spaces right before the end of the selector
+			if p.Is(token.Comma, token.OpenCurly) {
+				break
+			}
+			selector.Components = append(selector.Components, &ast.CombinatorComponent{
+				Kind:  "child",
+				Value: p.Text(),
+			})
+		default:
+			return nil, p.unexpected("selector")
+		}
+	}
+	return selector, nil
+}
+
+func (p *Parser) parseDeclarations() (decls []*ast.Declaration, err error) {
+	if err := p.Expect(token.OpenCurly); err != nil {
+		return nil, err
+	}
+	for !p.Is(token.CloseCurly) {
+		// Ignore spaces
+		for p.Accept(token.Space) {
+		}
+		decl, err := p.parseDeclaration()
+		if err != nil {
+			return nil, err
+		}
+		decls = append(decls, decl)
+	}
+	if err := p.Expect(token.CloseCurly); err != nil {
+		return nil, err
+	}
+	return decls, nil
+}
+
+func (p *Parser) parseDeclaration() (*ast.Declaration, error) {
+	if err := p.Expect(token.Identifier); err != nil {
+		return nil, err
+	}
+	property := p.Text()
+	for p.Accept(token.Space) {
+	}
+	if err := p.Expect(token.Colon); err != nil {
+		return nil, err
+	}
+	for p.Accept(token.Space) {
+	}
+	value, err := p.parseValue()
+	if err != nil {
+		return nil, err
+	}
+	for p.Accept(token.Space) {
+	}
+	important := false
+	if p.Accept(token.Exclamation) {
+		if err := p.Expect(token.Identifier); err != nil {
+			return nil, err
+		}
+		if p.Text() != "important" {
+			return nil, fmt.Errorf("expected important, got %s", p.Text())
+		}
+		important = true
+	}
+	for p.Accept(token.Space) {
+	}
+	// Accept a semicolon if it's there
+	p.Accept(token.Semicolon)
+	return &ast.Declaration{
+		Property:  property,
+		Value:     value,
+		Important: important,
+	}, nil
+}
+
+func (p *Parser) parseValue() (ast.Value, error) {
+	switch {
+	case p.Accept(token.Number):
+		return p.parseNumber()
+	default:
+		return nil, p.unexpected("value")
+	}
+}
+
+func (p *Parser) parseNumber() (ast.Value, error) {
+	value := p.Text()
+	switch {
+	case p.Accept(token.Identifier):
+		return &ast.LengthValue{
+			Value: value,
+			Unit:  p.Text(),
+		}, nil
+	default:
+		return &ast.NumberValue{
+			Value: value,
+		}, nil
 	}
 }
