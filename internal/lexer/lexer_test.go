@@ -61,6 +61,7 @@ func TestSample(t *testing.T) {
 	equal(t, "* { box-sizing: border-box; }", `* space:" " { space:" " ident:"box-sizing" : space:" " ident:"border-box" ; space:" " }`)
 	equal(t, "img[alt='logo'] { width: 100px; }", `ident:"img" [ ident:"alt" = string:"'logo'" ] space:" " { space:" " ident:"width" : space:" " number:"100" ident:"px" ; space:" " }`)
 	equal(t, "@font-face { font-family: 'MyFont'; src: url('myfont.woff2'); }", `@ ident:"font-face" space:" " { space:" " ident:"font-family" : space:" " string:"'MyFont'" ; space:" " ident:"src" : space:" " ident:"url" ( raw:"'myfont.woff2'" ) ; space:" " }`)
+	equal(t, `@font-face { font-family: 'MyFont'; src: local("some font"), url('myfont.woff2'); }`, `@ ident:"font-face" space:" " { space:" " ident:"font-family" : space:" " string:"'MyFont'" ; space:" " ident:"src" : space:" " ident:"local" ( raw:"\"some" space:" " raw:"font\"" ) , space:" " ident:"url" ( raw:"'myfont.woff2'" ) ; space:" " }`)
 	equal(t, "p::after { content: 'read more'; }", `ident:"p" :: ident:"after" space:" " { space:" " ident:"content" : space:" " string:"'read more'" ; space:" " }`)
 	equal(t, "ul > li { list-style-type: none; }", `ident:"ul" space:" " > space:" " ident:"li" space:" " { space:" " ident:"list-style-type" : space:" " ident:"none" ; space:" " }`)
 	equal(t, ":root { --main-color: #06c; }", `: ident:"root" space:" " { space:" " -- ident:"main-color" : space:" " hex:"#06c" ; space:" " }`)
