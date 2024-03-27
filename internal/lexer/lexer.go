@@ -152,7 +152,7 @@ func initialState(l *Lexer) (t token.Type) {
 		return token.Hash
 	case isAlpha(l.cp):
 		l.step()
-		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
+		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) || l.cp == '_' {
 			l.step()
 		}
 		return token.Identifier
@@ -255,22 +255,12 @@ func blockState(l *Lexer) token.Type {
 			return commentState(l)
 		}
 		return token.Slash
-	case isAlpha(l.cp):
+	case isAlpha(l.cp) || l.cp == '_':
 		l.step()
-		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
+		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) || l.cp == '_' {
 			l.step()
 		}
 		return token.Identifier
-	case l.cp == '_':
-		l.step()
-		if isAlpha(l.cp) {
-			l.step()
-			for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
-				l.step()
-			}
-			return token.Identifier
-		}
-		return l.unexpected()
 	case l.cp == '*':
 		l.step()
 		return token.Star
@@ -368,6 +358,10 @@ func parenState(l *Lexer) token.Type {
 	case l.cp == ':':
 		l.step()
 		return token.Colon
+	case l.cp == '(':
+		l.step()
+		l.pushState(parenState)
+		return token.OpenParen
 	case l.cp == '.':
 		l.step()
 		return token.Dot
@@ -385,7 +379,16 @@ func parenState(l *Lexer) token.Type {
 		return hexState(l)
 	case isNumeric(l.cp):
 		l.step()
-		for isNumeric(l.cp) || l.cp == '.' {
+		for isNumeric(l.cp) {
+			l.step()
+		}
+		if l.cp == '.' {
+			l.step()
+		} else if l.cp == 'n' {
+			l.step()
+			return token.Nth
+		}
+		for isNumeric(l.cp) {
 			l.step()
 		}
 		return token.Number
@@ -397,11 +400,35 @@ func parenState(l *Lexer) token.Type {
 		if l.cp == '-' {
 			l.step()
 			return token.DashDash
+		} else if l.cp == 'n' {
+			l.step()
+			return token.Nth
+		} else if isNumeric(l.cp) {
+			l.step()
+			for isNumeric(l.cp) {
+				l.step()
+			}
+			if l.cp == '.' {
+				l.step()
+			} else if l.cp == 'n' {
+				l.step()
+				return token.Nth
+			}
+			for isNumeric(l.cp) {
+				l.step()
+			}
+			return token.Number
 		}
 		return token.Dash
 	case l.cp == '+':
 		l.step()
 		return token.Plus
+	case l.cp == '>':
+		l.step()
+		return token.GreaterThan
+	case l.cp == '~':
+		l.step()
+		return token.Tilde
 	case l.cp == '/':
 		l.step()
 		if l.cp == '*' {
@@ -571,6 +598,8 @@ func stringState(l *Lexer, end rune) (t token.Type) {
 		}
 	}
 }
+
+// func isHex
 
 func hexState(l *Lexer) token.Type {
 	// Minimum of 3 hex digits

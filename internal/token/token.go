@@ -68,4 +68,5 @@ const (
 	Raw          Type = "raw"     //
 	String       Type = "string"  // "string" or 'string'
 	Comment      Type = "comment" // /* comment */ or // comment
+	Nth          Type = "nth"     // an+b
 )

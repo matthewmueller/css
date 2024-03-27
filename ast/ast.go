@@ -2,7 +2,7 @@
 package ast
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -49,6 +49,7 @@ var (
 	_ Rule = (*ImportRule)(nil)
 	_ Rule = (*KeyFramesRule)(nil)
 	_ Rule = (*FontFaceRule)(nil)
+	_ Rule = (*SupportsRule)(nil)
 )
 
 type StyleRule struct {
@@ -228,9 +229,8 @@ func (s *MediaQuery) String() string {
 	}
 	if s.MediaType != "" {
 		sb.WriteString(s.MediaType)
-		sb.WriteString(" ")
 		if s.Condition != nil {
-			sb.WriteString("and ")
+			sb.WriteString(" and ")
 		}
 	}
 	if s.Condition != nil {
@@ -259,7 +259,6 @@ type RawMediaCondition struct {
 func (*RawMediaCondition) mediaCondition() {}
 
 func (s *RawMediaCondition) String() string {
-	fmt.Println(s.Value)
 	return "(" + s.Value + ")"
 }
 
@@ -272,11 +271,27 @@ type SupportsCondition interface {
 	supportsCondition()
 }
 
+type SupportsRule struct {
+	Condition SupportsCondition
+}
+
+func (*SupportsRule) rule() {}
+
+func (s *SupportsRule) String() string {
+	return ""
+}
+
+func (s *SupportsRule) Visit(v Visitor) {
+	// v.VisitSupportsRule(s)
+}
+
 type Selector struct {
 	Components []SelectorComponent
 }
 
 var _ Node = &Selector{}
+
+func (s *Selector) argument() {}
 
 func (s *Selector) String() string {
 	sb := new(strings.Builder)
@@ -290,13 +305,59 @@ func (s *Selector) Visit(v Visitor) {
 	// v.VisitSelector(s)
 }
 
+type Argument interface {
+	Node
+	argument()
+}
+
+var (
+	_ Argument = (*Selector)(nil)
+	_ Argument = (*Separator)(nil)
+	_ Argument = (*Keyword)(nil)
+	_ Argument = (*Number)(nil)
+	_ Argument = (*Percent)(nil)
+	_ Argument = (*Length)(nil)
+	_ Argument = (*AnPlusB)(nil)
+)
+
+type AnPlusB struct {
+	A int
+	B int
+}
+
+func (*AnPlusB) argument() {}
+
+func (s *AnPlusB) String() string {
+	sb := new(strings.Builder)
+	switch s.A {
+	case 1:
+		sb.WriteString("n")
+	case -1:
+		sb.WriteString("-n")
+	default:
+		sb.WriteString(strconv.Itoa(s.A))
+	}
+	if s.B > 0 {
+		sb.WriteString(" + ")
+		sb.WriteString(strconv.Itoa(s.B))
+	} else if s.B < 0 {
+		sb.WriteString(" - ")
+		sb.WriteString(strconv.Itoa(s.B))
+	}
+	return sb.String()
+}
+
+func (s *AnPlusB) Visit(v Visitor) {
+	// v.VisitAnPlusB(s)
+}
+
 type SelectorComponent interface {
 	Node
 	selectorComponent()
 }
 
 var (
-	_ SelectorComponent = (*CombinatorComponent)(nil)
+	_ SelectorComponent = (*Separator)(nil)
 	_ SelectorComponent = (*UniversalComponent)(nil)
 	_ SelectorComponent = (*NamespaceComponent)(nil)
 	_ SelectorComponent = (*ElementComponent)(nil)
@@ -304,25 +365,30 @@ var (
 	_ SelectorComponent = (*ClassComponent)(nil)
 	_ SelectorComponent = (*AttributeComponent)(nil)
 	_ SelectorComponent = (*PseudoClassComponent)(nil)
-	_ SelectorComponent = (*PseudoClassFunctionComponent)(nil)
 	_ SelectorComponent = (*PseudoElementComponent)(nil)
 	_ SelectorComponent = (*NestingComponent)(nil)
 )
 
-type CombinatorComponent struct {
+type Separator struct {
 	Value string
 }
 
-func (*CombinatorComponent) selectorComponent() {}
+func (*Separator) selectorComponent() {}
+func (*Separator) argument()          {}
+func (*Separator) value()             {}
 
-func (c *CombinatorComponent) String() string {
-	if c.Value == " " {
-		return c.Value
+func (c *Separator) String() string {
+	switch c.Value {
+	case " ":
+		return " "
+	case ",":
+		return ", "
+	default:
+		return " " + c.Value + " "
 	}
-	return " " + c.Value + " "
 }
 
-func (c *CombinatorComponent) Visit(v Visitor) {
+func (c *Separator) Visit(v Visitor) {
 	// v.VisitCombinatorComponent(c)
 }
 
@@ -397,52 +463,54 @@ func (c *ClassComponent) Visit(v Visitor) {
 
 type PseudoClassComponent struct {
 	Name string
+	Args []Argument
 }
 
 func (*PseudoClassComponent) selectorComponent() {}
 
 func (c *PseudoClassComponent) String() string {
-	return ":" + c.Name
+	sb := new(strings.Builder)
+	sb.WriteString(":")
+	sb.WriteString(c.Name)
+	if len(c.Args) > 0 {
+		sb.WriteString("(")
+		for i, arg := range c.Args {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(arg.String())
+		}
+		sb.WriteString(")")
+	}
+	return sb.String()
 }
 
 func (c *PseudoClassComponent) Visit(v Visitor) {
 	// v.VisitPseudoClassComponent(c)
 }
 
-type PseudoClassFunctionComponent struct {
-	Name string
-	Args []Value
-}
-
-func (*PseudoClassFunctionComponent) selectorComponent() {}
-
-func (c *PseudoClassFunctionComponent) String() string {
-	sb := new(strings.Builder)
-	sb.WriteString(":")
-	sb.WriteString(c.Name)
-	sb.WriteString("(")
-	for i, arg := range c.Args {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		sb.WriteString(arg.String())
-	}
-	sb.WriteString(")")
-	return sb.String()
-}
-
-func (c *PseudoClassFunctionComponent) Visit(v Visitor) {
-	// v.VisitPseudoClassFunctionComponent(c)
-}
-
 type PseudoElementComponent struct {
 	Name string
+	Args []Argument
 }
 
 func (*PseudoElementComponent) selectorComponent() {}
 
 func (c *PseudoElementComponent) String() string {
-	return "::" + c.Name
+	sb := new(strings.Builder)
+	sb.WriteString("::")
+	sb.WriteString(c.Name)
+	if len(c.Args) > 0 {
+		sb.WriteString("(")
+		for i, arg := range c.Args {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(arg.String())
+		}
+		sb.WriteString(")")
+	}
+	return sb.String()
 }
 
 func (c *PseudoElementComponent) Visit(v Visitor) {
@@ -523,6 +591,7 @@ func (s *Declaration) Visit(v Visitor) {
 
 type Value interface {
 	Node
+	Argument
 	value()
 }
 
@@ -531,33 +600,65 @@ var (
 	_ Value = (*Length)(nil)
 	_ Value = (*Percent)(nil)
 	_ Value = (*Number)(nil)
+	_ Value = (*StringValue)(nil)
+	_ Value = (*FunctionValue)(nil)
 	_ Value = (*RawValue)(nil)
+	_ Value = (*Separator)(nil)
+	_ Value = (*ListValue)(nil)
 )
 
 type Keyword struct {
-	Value string
+	Name string
 }
 
 func (*Keyword) value()            {}
+func (*Keyword) argument()         {}
 func (*Keyword) keyframeSelector() {}
 
 func (s *Keyword) String() string {
-	return s.Value
+	return s.Name
 }
 
 func (s *Keyword) Visit(v Visitor) {
 	// v.VisitKeywordValue(s)
 }
 
+type FunctionValue struct {
+	Name string
+	Args []Value
+}
+
+func (*FunctionValue) value()    {}
+func (*FunctionValue) argument() {}
+
+func (s *FunctionValue) String() string {
+	sb := new(strings.Builder)
+	sb.WriteString(s.Name)
+	sb.WriteString("(")
+	for i, arg := range s.Args {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(arg.String())
+	}
+	sb.WriteString(")")
+	return sb.String()
+}
+
+func (s *FunctionValue) Visit(v Visitor) {
+	// v.VisitFunctionValue(s)
+}
+
 type Length struct {
-	Value string
+	Value float64
 	Unit  string
 }
 
-func (*Length) value() {}
+func (*Length) value()    {}
+func (*Length) argument() {}
 
 func (s *Length) String() string {
-	return s.Value + s.Unit
+	return strconv.FormatFloat(s.Value, 'f', -1, 64) + s.Unit
 }
 
 func (s *Length) Visit(v Visitor) {
@@ -565,14 +666,15 @@ func (s *Length) Visit(v Visitor) {
 }
 
 type Percent struct {
-	Value string
+	Value float64
 }
 
 func (*Percent) value()            {}
+func (*Percent) argument()         {}
 func (*Percent) keyframeSelector() {}
 
 func (s *Percent) String() string {
-	return s.Value + "%"
+	return strconv.FormatFloat(s.Value, 'f', -1, 64) + "%"
 }
 
 func (s *Percent) Visit(v Visitor) {
@@ -580,24 +682,41 @@ func (s *Percent) Visit(v Visitor) {
 }
 
 type Number struct {
-	Value string
+	Value float64
 }
 
-func (*Number) value() {}
+func (*Number) value()    {}
+func (*Number) argument() {}
 
 func (s *Number) String() string {
-	return s.Value
+	return strconv.FormatFloat(s.Value, 'f', -1, 64)
 }
 
 func (s *Number) Visit(v Visitor) {
 	// v.VisitNumberValue(s)
 }
 
+type StringValue struct {
+	Value string
+}
+
+func (*StringValue) value()    {}
+func (*StringValue) argument() {}
+
+func (s *StringValue) String() string {
+	return s.Value
+}
+
+func (s *StringValue) Visit(v Visitor) {
+	// v.VisitStringValue(s)
+}
+
 type RawValue struct {
 	Value string
 }
 
-func (*RawValue) value() {}
+func (*RawValue) value()    {}
+func (*RawValue) argument() {}
 
 func (s *RawValue) String() string {
 	return s.Value
@@ -605,4 +724,23 @@ func (s *RawValue) String() string {
 
 func (s *RawValue) Visit(v Visitor) {
 	// v.VisitRawValue(s)
+}
+
+type ListValue struct {
+	Values []Value
+}
+
+func (*ListValue) value()    {}
+func (*ListValue) argument() {}
+
+func (s *ListValue) String() string {
+	sb := new(strings.Builder)
+	for _, v := range s.Values {
+		sb.WriteString(v.String())
+	}
+	return sb.String()
+}
+
+func (s *ListValue) Visit(v Visitor) {
+	// v.VisitListValue(s)
 }
