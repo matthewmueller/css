@@ -163,7 +163,7 @@ func TestComplex(t *testing.T) {
 	equal(t, `.dropdown-toggle:nth-last-child(n+3) {}`, ".dropdown-toggle:nth-last-child(n + 3) {  }")
 	equal(t, `.card-group > .card:not(:last-child) {}`, `.card-group > .card:not(:last-child) {  }`)
 	equal(t, `@media screen { .card-group > .card:not(:last-child) {} }`, "@media screen {\n  .card-group > .card:not(:last-child) {  }\n}")
-	equal(t, `.clip { clip: rect( 1px 1px 1px 1px ); /* IE6, IE7 */ clip: rect( 1px, 1px, 1px, 1px ); }`, `.clip { clip: rect(1px, 1px, 1px, 1px); clip: rect(1px, 1px, 1px, 1px) }`)
+	equal(t, `.clip { clip: rect( 1px 1px 1px 1px ); /* IE6, IE7 */ clip: rect( 1px, 1px, 1px, 1px ); }`, `.clip { clip: rect(1px 1px 1px 1px); clip: rect(1px, 1px, 1px, 1px) }`)
 	equal(t, `:root { --color: ; /* The variable is declared but has no value */ } body { color: var(--color, black); }`, ":root { --color: }\nbody { color: var(--color, black) }")
 	equal(t, `.display-none{display:none!important}`, `.display-none { display: none !important }`)
 	equal(t, `.clip { position: fixed !important; }`, `.clip { position: fixed !important }`)
@@ -191,17 +191,17 @@ func TestMediaQuery(t *testing.T) {
 }
 
 func TestSupports(t *testing.T) {
-	t.Skip("@supports is not supported yet")
-	equal(t, `@supports (display: grid) { .grid { display: grid; }}`, ``)
-	equal(t, `@supports (display: grid) and (transform-origin: 5% 5%) { .grid { display: grid; }}`, ``)
-	equal(t, `@supports selector(h2 > p) { .grid { display: grid; } }`, ``)
-	equal(t, `@supports selector(h2 ~ p) { .grid { display: grid; } }`, ``)
-	equal(t, `@supports selector(h2 + p) { .grid { display: grid; } }`, ``)
-	equal(t, `@supports selector(:not(.h2)) { .grid { display: grid; } }`, ``)
-	equal(t, `@supports font-tech(color-COLRv1) { .grid { display: grid; } }`, ``)
-	equal(t, `@import url("gridy.css") supports(display: grid) screen and (max-width: 400px);`, ``)
-	equal(t, `@import url("flexy.css") supports(not (display: grid) and (display: flex)) screen and (max-width: 400px);`, ``)
-	equal(t, `@import url("whatever.css") supports((selector(h2 > p)) and (font-tech(color-COLRv1)));`, ``)
+	equal(t, `@supports (display: grid) { .grid { display: grid; }}`, "@supports (display: grid) {\n  .grid { display: grid }\n}")
+	equal(t, `@supports (display: grid) and (transform-origin: 5% 5%) { .grid { display: grid; }}`, "@supports (display: grid) and (transform-origin: 5% 5%) {\n  .grid { display: grid }\n}")
+	equal(t, `@supports selector(h2 > p) { .grid { display: grid; } }`, "@supports selector(h2 > p) {\n  .grid { display: grid }\n}")
+	equal(t, `@supports selector(h2 ~ p) { .grid { display: grid; } }`, "@supports selector(h2 ~ p) {\n  .grid { display: grid }\n}")
+	equal(t, `@supports selector(h2 + p) { .grid { display: grid; } }`, "@supports selector(h2 + p) {\n  .grid { display: grid }\n}")
+	equal(t, `@supports selector(:not(.h2)) { .grid { display: grid; } }`, "@supports selector(:not(.h2)) {\n  .grid { display: grid }\n}")
+	equal(t, `@supports font-tech(color-COLRv1) { .grid { display: grid; } }`, "@supports font-tech(color-COLRv1) {\n  .grid { display: grid }\n}")
+	equal(t, `@import url("gridy.css") supports(display: grid);`, `@import url("gridy.css") supports((display: grid));`)
+	equal(t, `@import url("gridy.css") supports(display: grid) screen and (max-width: 400px);`, `@import url("gridy.css") supports((display: grid)) screen and (max-width: 400px);`)
+	equal(t, `@import url("flexy.css") supports(not (display: grid) and (display: flex)) screen and (max-width: 400px);`, `@import url("flexy.css") supports(not (display: grid) and (display: flex)) screen and (max-width: 400px);`)
+	// equal(t, `@import url("whatever.css") supports((selector(h2 > p)) and (font-tech(color-COLRv1)));`, `@`)
 }
 
 func TestImports(t *testing.T) {
@@ -231,5 +231,5 @@ func TestFile(t *testing.T) {
 	equalFile(t, "basscss.min.css.txt")
 	equalFile(t, "bootstrap.min.css.txt")
 	equalFile(t, "github.com.css")
-	// equalFile(t, "atom.io.css")
+	equalFile(t, "atom.io.css")
 }

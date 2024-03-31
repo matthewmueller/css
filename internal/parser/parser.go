@@ -346,26 +346,6 @@ func (p *Parser) parseMediaRule() (*ast.MediaRule, error) {
 	}, nil
 }
 
-// func (p *Parser) parseMediaQueries() (queries []*ast.MediaQuery, err error) {
-// 	for {
-// 		query, err := p.parseMediaQuery()
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		queries = append(queries, query)
-// 		for p.Accept(token.Space, token.Comment) {
-// 		}
-// 		if p.Is(token.OpenCurly, token.Semicolon) {
-// 			return queries, nil
-// 		}
-// 		if err := p.Expect(token.Comma); err != nil {
-// 			return nil, err
-// 		}
-// 		for p.Accept(token.Space, token.Comment) {
-// 		}
-// 	}
-// }
-
 // https://drafts.csswg.org/mediaqueries/#media
 func (p *Parser) parseMediaCondition() (*ast.MediaCondition, error) {
 	condition := &ast.MediaCondition{}
@@ -519,7 +499,20 @@ func (p *Parser) parseImportRule() (*ast.ImportRule, error) {
 			}
 			rule.Layers = layers
 		case "supports":
-			return nil, p.unexpected("supports rule")
+			p.l.Next()
+			if err := p.Expect(token.OpenParen); err != nil {
+				return nil, err
+			}
+			supports, err := p.parseImportSupports()
+			if err != nil {
+				return nil, err
+			}
+			if err := p.Expect(token.CloseParen); err != nil {
+				return nil, err
+			}
+			for p.Accept(token.Space, token.Comment) {
+			}
+			rule.Supports = supports
 		default:
 			media, err := p.parseMediaCondition()
 			if err != nil {
@@ -530,6 +523,20 @@ func (p *Parser) parseImportRule() (*ast.ImportRule, error) {
 	}
 	p.Accept(token.Semicolon)
 	return rule, nil
+}
+
+func (p *Parser) parseImportSupports() (*ast.SupportsCondition, error) {
+	next := p.l.Peak(1)
+	if next.Type != token.Identifier || next.Text == "not" {
+		return p.parseSupportsCondition()
+	}
+	prop, err := p.parseSupportsProperty()
+	if err != nil {
+		return nil, err
+	}
+	return &ast.SupportsCondition{
+		Field: prop,
+	}, nil
 }
 
 func (p *Parser) parseFontFaceRule() (*ast.FontFaceRule, error) {
@@ -646,7 +653,153 @@ func (p *Parser) parseKeyFrameSelector() (ast.KeyframeSelector, error) {
 }
 
 func (p *Parser) parseSupportsRule() (*ast.SupportsRule, error) {
-	return nil, p.unexpected("supports rule")
+	for p.Accept(token.Space, token.Comment) {
+	}
+	condition, err := p.parseSupportsCondition()
+	if err != nil {
+		return nil, err
+	}
+	for p.Accept(token.Space, token.Comment) {
+	}
+	if err := p.Expect(token.OpenCurly); err != nil {
+		return nil, err
+	}
+	for p.Accept(token.Space, token.Comment) {
+	}
+	var rules []ast.Rule
+	for !p.Is(token.CloseCurly) {
+		rule, err := p.parseRule()
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, rule)
+		for p.Accept(token.Space, token.Comment) {
+		}
+	}
+	if err := p.Expect(token.CloseCurly); err != nil {
+		return nil, err
+	}
+	return &ast.SupportsRule{
+		Condition: condition,
+		Rules:     rules,
+	}, nil
+}
+
+func (p *Parser) parseSupportsCondition() (*ast.SupportsCondition, error) {
+	condition := &ast.SupportsCondition{}
+
+	// Handle not
+	next := p.l.Peak(1)
+	if next.Type == token.Identifier && next.Text == "not" {
+		p.l.Next()
+		condition.Operator = "not"
+		for p.Accept(token.Space, token.Comment) {
+		}
+	}
+	field, err := p.parseSupportsField()
+	if err != nil {
+		return nil, err
+	}
+	condition.Field = field
+
+	// Handle and/or conditions
+	for {
+		for p.Accept(token.Space, token.Comment) {
+		}
+		next = p.l.Peak(1)
+		if next.Type != token.Identifier || (next.Text != "and" && next.Text != "or") {
+			break
+		}
+		p.l.Next()
+		child := &ast.SupportsCondition{
+			Operator: p.Text(),
+		}
+		for p.Accept(token.Space, token.Comment) {
+		}
+		field, err := p.parseSupportsField()
+		if err != nil {
+			return nil, err
+		}
+		child.Field = field
+		condition.Children = append(condition.Children, child)
+	}
+	return condition, nil
+}
+
+func (p *Parser) parseSupportsField() (ast.SupportsField, error) {
+	switch {
+	case p.Is(token.Identifier):
+		return p.parseSupportFunction()
+	case p.Is(token.OpenParen):
+		if err := p.Expect(token.OpenParen); err != nil {
+			return nil, err
+		}
+		for p.Accept(token.Space, token.Comment) {
+		}
+		prop, err := p.parseSupportsProperty()
+		if err != nil {
+			return nil, err
+		}
+		for p.Accept(token.Space, token.Comment) {
+		}
+		if err := p.Expect(token.CloseParen); err != nil {
+			return nil, err
+		}
+		return prop, nil
+	default:
+		return nil, p.unexpected("support constraint")
+	}
+}
+
+func (p *Parser) parseSupportsProperty() (*ast.SupportsProperty, error) {
+	if err := p.Expect(token.Identifier); err != nil {
+		return nil, err
+	}
+	name := p.Text()
+	for p.Accept(token.Space, token.Comment) {
+	}
+	if err := p.Expect(token.Colon); err != nil {
+		return nil, err
+	}
+	for p.Accept(token.Space, token.Comment) {
+	}
+	value, err := p.parseParenValue()
+	if err != nil {
+		return nil, err
+	}
+	return &ast.SupportsProperty{
+		Name:  name,
+		Value: value,
+	}, nil
+}
+
+func (p *Parser) parseSupportFunction() (*ast.SupportsFunction, error) {
+	if err := p.Expect(token.Identifier); err != nil {
+		return nil, err
+	}
+	node := &ast.SupportsFunction{
+		Name: p.Text(),
+	}
+	if node.Name == "selector" {
+		if err := p.Expect(token.OpenParen); err != nil {
+			return nil, err
+		}
+		sel, err := p.parseSelector()
+		if err != nil {
+			return nil, err
+		}
+		node.Args = append(node.Args, sel)
+		if err := p.Expect(token.CloseParen); err != nil {
+			return nil, err
+		}
+		return node, nil
+	}
+	args, err := p.parseArguments(node.Name)
+	if err != nil {
+		return nil, err
+	}
+	node.Args = append(node.Args, args...)
+	return node, nil
 }
 
 func (p *Parser) parseCharsetRule() (*ast.CharsetRule, error) {
@@ -710,7 +863,7 @@ func (p *Parser) parseDeclaration() (*ast.Declaration, error) {
 	}
 	for p.Accept(token.Space, token.Comment) {
 	}
-	value, err := p.parseListValue()
+	value, err := p.parseDeclarationValue()
 	if err != nil {
 		return nil, err
 	}
@@ -737,9 +890,17 @@ func (p *Parser) parseDeclaration() (*ast.Declaration, error) {
 	}, nil
 }
 
-func (p *Parser) parseListValue() (value ast.Value, err error) {
+func (p *Parser) parseDeclarationValue() (value ast.Value, err error) {
+	return p.parseValueList(token.Semicolon, token.CloseCurly, token.Exclamation)
+}
+
+func (p *Parser) parseParenValue() (value ast.Value, err error) {
+	return p.parseValueList(token.CloseParen)
+}
+
+func (p *Parser) parseValueList(parseUntil ...token.Type) (value ast.Value, err error) {
 	var values []ast.Value
-	for !p.Is(token.Semicolon, token.CloseCurly, token.Exclamation) {
+	for !p.Is(parseUntil...) {
 		value, err := p.parseValue()
 		if err != nil {
 			return nil, err
@@ -749,7 +910,7 @@ func (p *Parser) parseListValue() (value ast.Value, err error) {
 		for p.Accept(token.Space, token.Comment) {
 			hasSpace = true
 		}
-		if p.Is(token.Semicolon, token.CloseCurly, token.Exclamation) {
+		if p.Is(parseUntil...) {
 			break
 		}
 		if p.Accept(token.Comma, token.Slash) {
@@ -812,7 +973,7 @@ func (p *Parser) parseFunctionValues() (values []ast.Value, err error) {
 	for p.Accept(token.Space, token.Comment) {
 	}
 	for !p.Is(token.CloseParen) {
-		value, err := p.parseValue()
+		value, err := p.parseParenValue()
 		if err != nil {
 			return nil, err
 		}

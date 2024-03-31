@@ -179,7 +179,7 @@ span.CodeMirror-selectedtext { background: none }
 details-dialog { position: fixed; margin: 10vh auto; top: 0; left: 50%; transform: translateX(-50%); z-index: 999; max-height: 80vh; max-width: 90vw; width: 448px }
 .octicon { display: inline-block; vertical-align: text-top; fill: currentColor }
 body.intent-mouse [role="button"]:focus, body.intent-mouse button:focus, body.intent-mouse summary:focus { outline: none }
-.CodeMirror { height: calc(100vh, - 1px) }
+.CodeMirror { height: calc(100vh - 1px) }
 .file-editor-textarea { width: 100%; padding: 5px 4px; font: 12px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; resize: vertical; border: 0; border-radius: 0; outline: none }
 .container-preview .tabnav-tabs { margin: -6px 0 -6px -11px }
 .container-preview .tabnav-tabs .tabnav-tab { padding: 12px 15px; border-radius: 0 }

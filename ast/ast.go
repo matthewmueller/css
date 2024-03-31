@@ -129,7 +129,7 @@ type ImportRule struct {
 	Url      string
 	Layers   []string
 	Media    *MediaCondition
-	Supports SupportsCondition
+	Supports *SupportsCondition
 }
 
 func (*ImportRule) rule() {}
@@ -140,6 +140,11 @@ func (s *ImportRule) String() string {
 	if s.Url != "" {
 		sb.WriteString("url(")
 		sb.WriteString(strconv.Quote(s.Url))
+		sb.WriteString(")")
+	}
+	if s.Supports != nil {
+		sb.WriteString(" supports(")
+		sb.WriteString(s.Supports.String())
 		sb.WriteString(")")
 	}
 	if s.Media != nil {
@@ -246,37 +251,6 @@ func (s *FontFaceRule) Visit(v Visitor) {
 	// v.VisitFontFaceRule(s)
 }
 
-// // https://drafts.csswg.org/mediaqueries/#media
-// type MediaQuery struct {
-// 	Qualifier string // only or not
-// 	MediaType string
-// 	Condition *MediaCondition
-// }
-
-// var _ Node = (*MediaQuery)(nil)
-
-// func (s *MediaQuery) String() string {
-// 	sb := new(strings.Builder)
-// 	if s.Qualifier != "" {
-// 		sb.WriteString(s.Qualifier)
-// 		sb.WriteString(" ")
-// 	}
-// 	if s.MediaType != "" {
-// 		sb.WriteString(s.MediaType)
-// 		if s.Condition != nil {
-// 			sb.WriteString(" and ")
-// 		}
-// 	}
-// 	if s.Condition != nil {
-// 		sb.WriteString(s.Condition.String())
-// 	}
-// 	return sb.String()
-// }
-
-// func (s *MediaQuery) Visit(v Visitor) {
-// 	// v.VisitMediaQuery(s)
-// }
-
 type MediaConstraint interface {
 	Node
 	mediaConstraint()
@@ -374,46 +348,118 @@ func (*MediaCondition) Visit(v Visitor) {
 	// v.VisitMediaCondition(s)
 }
 
-// type MediaCondition interface {
+// type SupportConstraint interface {
 // 	Node
-// 	mediaCondition()
+// 	supportsConstraint()
 // }
 
-// var (
-// 	_ MediaCondition = (*RawMediaCondition)(nil)
-// )
-
-// type RawMediaCondition struct {
-// 	Value string
-// }
-
-// func (*RawMediaCondition) mediaCondition() {}
-
-// func (s *RawMediaCondition) String() string {
-// 	return "(" + s.Value + ")"
-// }
-
-// func (s *RawMediaCondition) Visit(v Visitor) {
-// 	// v.VisitRawMediaCondition(s)
-// }
-
-type SupportsCondition interface {
-	Node
-	supportsCondition()
-}
+var (
+	_ SupportsField = (*SupportsProperty)(nil)
+	_ SupportsField = (*SupportsFunction)(nil)
+)
 
 type SupportsRule struct {
-	Condition SupportsCondition
+	Condition *SupportsCondition
+	Rules     []Rule
 }
 
 func (*SupportsRule) rule() {}
 
 func (s *SupportsRule) String() string {
-	return ""
+	sb := new(strings.Builder)
+	sb.WriteString("@supports")
+	sb.WriteString(" ")
+	sb.WriteString(s.Condition.String())
+	sb.WriteString(" {")
+	if len(s.Rules) > 0 {
+		sb.WriteString("\n")
+		for _, r := range s.Rules {
+			sb.WriteString("  ")
+			sb.WriteString(r.String())
+			sb.WriteString("\n")
+		}
+	}
+	sb.WriteString("}")
+	return sb.String()
 }
 
 func (s *SupportsRule) Visit(v Visitor) {
 	// v.VisitSupportsRule(s)
+}
+
+type SupportsCondition struct {
+	Operator string // not, and, or
+	Field    SupportsField
+	Children []*SupportsCondition
+}
+
+func (c *SupportsCondition) String() string {
+	sb := new(strings.Builder)
+	if c.Operator != "" {
+		sb.WriteString(c.Operator)
+		if c.Field != nil {
+			sb.WriteString(" ")
+		}
+	}
+	if c.Field != nil {
+		sb.WriteString(c.Field.String())
+	}
+	for _, child := range c.Children {
+		sb.WriteString(" ")
+		sb.WriteString(child.String())
+	}
+	return sb.String()
+}
+
+type SupportsField interface {
+	Node
+	supportsField()
+}
+
+type SupportsProperty struct {
+	Name  string
+	Value Value
+}
+
+func (*SupportsProperty) supportsField() {}
+
+func (s *SupportsProperty) String() string {
+	sb := new(strings.Builder)
+	sb.WriteString("(")
+	sb.WriteString(s.Name)
+	sb.WriteString(": ")
+	sb.WriteString(s.Value.String())
+	sb.WriteString(")")
+	return sb.String()
+}
+
+func (s *SupportsProperty) Visit(v Visitor) {
+	// v.VisitSupportsCondition(s)
+}
+
+type SupportsFunction struct {
+	Name string
+	Args []Argument
+}
+
+func (*SupportsFunction) supportsField() {}
+
+func (s *SupportsFunction) String() string {
+	sb := new(strings.Builder)
+	sb.WriteString(s.Name)
+	sb.WriteString("(")
+	for i, arg := range s.Args {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(arg.String())
+	}
+	sb.WriteString(")")
+	return sb.String()
+}
+
+func (s *SupportsFunction) Visit(v Visitor) {
+	// v.VisitSupportsFunction(s)
 }
 
 type CharsetRule struct {
