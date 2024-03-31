@@ -437,7 +437,7 @@ progress { vertical-align: baseline }
 .table-borderless > :not(caption) > * > * { border-bottom-width: 0 }
 .table-borderless > :not(:first-child) { border-top-width: 0 }
 .table-striped > tbody > tr:nth-of-type(odd) > * { --bs-table-color-type: var(--bs-table-striped-color); --bs-table-bg-type: var(--bs-table-striped-bg) }
-.table-striped-columns > :not(caption) > tr > :nth-child(2) { --bs-table-color-type: var(--bs-table-striped-color); --bs-table-bg-type: var(--bs-table-striped-bg) }
+.table-striped-columns > :not(caption) > tr > :nth-child(2n) { --bs-table-color-type: var(--bs-table-striped-color); --bs-table-bg-type: var(--bs-table-striped-bg) }
 .table-active { --bs-table-color-state: var(--bs-table-active-color); --bs-table-bg-state: var(--bs-table-active-bg) }
 .table-hover > tbody > tr:hover > * { --bs-table-color-state: var(--bs-table-hover-color); --bs-table-bg-state: var(--bs-table-hover-bg) }
 .table-primary { --bs-table-color: #000; --bs-table-bg: #cfe2ff; --bs-table-border-color: #a6b5cc; --bs-table-striped-bg: #c5d7f2; --bs-table-striped-color: #000; --bs-table-active-bg: #bacbe6; --bs-table-active-color: #000; --bs-table-hover-bg: #bfd1ec; --bs-table-hover-color: #000; color: var(--bs-table-color); border-color: var(--bs-table-border-color) }

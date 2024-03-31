@@ -357,7 +357,7 @@ body.menu-active .modal-backdrop { display: block; position: fixed; top: 0; left
 .markdown-body table th { font-weight: bold }
 .markdown-body table th, .markdown-body table td { border: 1px solid #ddd; padding: 6px 13px }
 .markdown-body table tr { border-top: 1px solid #ccc; background-color: #fff }
-.markdown-body table tr:nth-child(2) { background-color: #f8f8f8 }
+.markdown-body table tr:nth-child(2n) { background-color: #f8f8f8 }
 .markdown-body img { max-width: 100%; -moz-box-sizing: border-box; box-sizing: border-box }
 .markdown-body span.frame { display: block; overflow: hidden }
 .markdown-body span.frame > span { border: 1px solid #ddd; display: block; float: left; overflow: hidden; margin: 13px 0 0; padding: 7px; width: auto }
@@ -671,7 +671,7 @@ body.menu-active .modal-backdrop { display: block; position: fixed; top: 0; left
 .admin ul.package-list li .octicon { float: right; margin: 6px }
 .admin ul.package-list li:nth-child(odd) { background-color: #efeae1 }
 .admin .flags-list thead { background-color: #eee }
-.admin .flags-list tbody tr:nth-child(2) { background-color: #eee }
+.admin .flags-list tbody tr:nth-child(2n) { background-color: #eee }
 .admin .flag-details.unresolved { background-color: #ffa5a5 }
 .admin .flag-details.resolved { background-color: #e6ffcb }
 .admin .flag-details.resolved h3 { text-decoration: line-through }

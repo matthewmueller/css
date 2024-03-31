@@ -524,6 +524,7 @@ func (s *AnPlusB) String() string {
 		sb.WriteString("-n")
 	default:
 		sb.WriteString(strconv.Itoa(s.A))
+		sb.WriteString("n")
 	}
 	if s.B > 0 {
 		sb.WriteString(" + ")
@@ -580,12 +581,14 @@ func (c *CombinatorComponent) Visit(v Visitor) {
 	v.VisitCombinatorComponent(c)
 }
 
-type UniversalComponent struct{}
+type UniversalComponent struct {
+	Name string
+}
 
 func (*UniversalComponent) selectorComponent() {}
 
-func (*UniversalComponent) String() string {
-	return "*"
+func (c *UniversalComponent) String() string {
+	return c.Name
 }
 
 func (c *UniversalComponent) Visit(v Visitor) {

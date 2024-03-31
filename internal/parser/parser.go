@@ -16,6 +16,13 @@ func Parse(path, input string) (*ast.Stylesheet, error) {
 	return p.Parse()
 }
 
+// Parse a single component of a selector
+func ParseSelectorComponent(path, input string) (ast.SelectorComponent, error) {
+	l := lexer.New(input)
+	p := New(path, l)
+	return p.parseSelectorComponent()
+}
+
 func New(path string, l *lexer.Lexer) *Parser {
 	return &Parser{path, l}
 }
@@ -183,80 +190,11 @@ func (p *Parser) parseSelectors() (selectors []*ast.Selector, err error) {
 func (p *Parser) parseSelector() (*ast.Selector, error) {
 	selector := &ast.Selector{}
 	for !p.Is(token.Comma, token.OpenCurly, token.CloseParen) {
-		switch {
-		case p.Accept(token.Identifier):
-			selector.Components = append(selector.Components, &ast.ElementComponent{
-				Name: p.Text(),
-			})
-		case p.Accept(token.Hash):
-			if err := p.Expect(token.Identifier); err != nil {
-				return nil, err
-			}
-			selector.Components = append(selector.Components, &ast.IdComponent{
-				Name: p.Text(),
-			})
-		case p.Accept(token.Dot):
-			if err := p.Expect(token.Identifier); err != nil {
-				return nil, err
-			}
-			selector.Components = append(selector.Components, &ast.ClassComponent{
-				Name: p.Text(),
-			})
-		case p.Accept(token.ColonColon):
-			name := ""
-			if p.Accept(token.DashDash) {
-				name += p.Text()
-			} else if p.Accept(token.Dash) {
-				name += p.Text()
-			}
-			if err := p.Expect(token.Identifier); err != nil {
-				return nil, err
-			}
-			name += p.Text()
-			component := &ast.PseudoElementComponent{
-				Name: name,
-			}
-			if p.Is(token.OpenParen) {
-				args, err := p.parseArguments(name)
-				if err != nil {
-					return nil, err
-				}
-				component.Args = args
-			}
-			selector.Components = append(selector.Components, component)
-		case p.Accept(token.Colon):
-			name := ""
-			if p.Accept(token.DashDash) {
-				name += p.Text()
-			} else if p.Accept(token.Dash) {
-				name += p.Text()
-			}
-			if err := p.Expect(token.Identifier); err != nil {
-				return nil, err
-			}
-			name += p.Text()
-			component := &ast.PseudoClassComponent{
-				Name: name,
-			}
-			if p.Is(token.OpenParen) {
-				args, err := p.parseArguments(name)
-				if err != nil {
-					return nil, err
-				}
-				component.Args = args
-			}
-			selector.Components = append(selector.Components, component)
-		case p.Accept(token.OpenBracket):
-			attr, err := p.parseAttributeComponent()
-			if err != nil {
-				return nil, err
-			}
-			selector.Components = append(selector.Components, attr)
-		case p.Accept(token.Star):
-			selector.Components = append(selector.Components, &ast.UniversalComponent{})
-		default:
-			return nil, p.unexpected("selector")
+		component, err := p.parseSelectorComponent()
+		if err != nil {
+			return nil, err
 		}
+		selector.Components = append(selector.Components, component)
 
 		hasSpace := false
 		for p.Accept(token.Space, token.Comment) {
@@ -280,6 +218,85 @@ func (p *Parser) parseSelector() (*ast.Selector, error) {
 		}
 	}
 	return selector, nil
+}
+
+func (p *Parser) parseSelectorComponent() (ast.SelectorComponent, error) {
+	switch {
+	case p.Accept(token.Identifier):
+		return &ast.ElementComponent{
+			Name: p.Text(),
+		}, nil
+	case p.Accept(token.Hash):
+		if err := p.Expect(token.Identifier); err != nil {
+			return nil, err
+		}
+		return &ast.IdComponent{
+			Name: p.Text(),
+		}, nil
+	case p.Accept(token.Dot):
+		if err := p.Expect(token.Identifier); err != nil {
+			return nil, err
+		}
+		return &ast.ClassComponent{
+			Name: p.Text(),
+		}, nil
+	case p.Accept(token.ColonColon):
+		name := ""
+		if p.Accept(token.DashDash) {
+			name += p.Text()
+		} else if p.Accept(token.Dash) {
+			name += p.Text()
+		}
+		if err := p.Expect(token.Identifier); err != nil {
+			return nil, err
+		}
+		name += p.Text()
+		component := &ast.PseudoElementComponent{
+			Name: name,
+		}
+		if p.Is(token.OpenParen) {
+			args, err := p.parseArguments(name)
+			if err != nil {
+				return nil, err
+			}
+			component.Args = args
+		}
+		return component, nil
+	case p.Accept(token.Colon):
+		name := ""
+		if p.Accept(token.DashDash) {
+			name += p.Text()
+		} else if p.Accept(token.Dash) {
+			name += p.Text()
+		}
+		if err := p.Expect(token.Identifier); err != nil {
+			return nil, err
+		}
+		name += p.Text()
+		component := &ast.PseudoClassComponent{
+			Name: name,
+		}
+		if p.Is(token.OpenParen) {
+			args, err := p.parseArguments(name)
+			if err != nil {
+				return nil, err
+			}
+			component.Args = args
+		}
+		return component, nil
+	case p.Accept(token.OpenBracket):
+		attr, err := p.parseAttributeComponent()
+		if err != nil {
+			return nil, err
+		}
+		return attr, nil
+	case p.Accept(token.Star):
+		return &ast.UniversalComponent{
+			Name: p.Text(),
+		}, nil
+	default:
+		return nil, p.unexpected("selector")
+	}
 }
 
 func (p *Parser) parseAttributeComponent() (*ast.AttributeComponent, error) {
