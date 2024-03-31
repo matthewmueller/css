@@ -1,3 +1,8 @@
+# 0.0.2 / 2024-03-31
+
+- add scoper for scoping css with a selector
+- add visitor support
+
 # 0.0.1 / 2024-03-31
 
 - expose parser and update readme
