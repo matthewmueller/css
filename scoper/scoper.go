@@ -53,23 +53,6 @@ func ScopeAST(path, scope string, stylesheet *ast.Stylesheet) (*ast.Stylesheet, 
 		}
 		n.Components = scoped
 	}
-	// visitor.ElementComponent = func(n *ast.ElementComponent) {
-	// 	n.Name += scope
-	// }
-	// visitor.IdComponent = func(n *ast.IdComponent) {
-	// 	n.Name += scope
-	// }
-	// visitor.ClassComponent = func(n *ast.ClassComponent) {
-	// 	n.Name += scope
-	// }
-	// visitor.UniversalComponent = func(n *ast.UniversalComponent) {
-	// 	n.Name += scope
-	// }
-	// visitor.PseudoClassComponent = func(n *ast.PseudoClassComponent) {
-	// 	if n.Name == "root" {
-	// 		n.Name += scope
-	// 	}
-	// }
 	visitor.KeyFramesRule = func(n *ast.KeyFramesRule) {
 		n.Name += strings.Replace(scope, ".", "-", -1)
 	}
