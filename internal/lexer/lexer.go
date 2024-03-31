@@ -57,11 +57,18 @@ type Lexer struct {
 func (l *Lexer) nextToken() token.Token {
 	l.start = l.end
 	tokenType := l.states[len(l.states)-1](l)
+	text := l.input[l.start:l.end]
 	t := token.Token{
 		Type:  tokenType,
 		Start: l.start,
-		Text:  l.input[l.start:l.end],
+		Text:  text,
 		Line:  l.line,
+	}
+	// update newlines
+	for _, ch := range text {
+		if ch == '\n' {
+			l.line++
+		}
 	}
 	if tokenType == token.Error {
 		t.Error = l.err
@@ -95,7 +102,7 @@ func (l *Lexer) Unexpected() error {
 	if len(l.peaked) > 0 {
 		token = l.peaked[0]
 	}
-	return fmt.Errorf("unexpected token %s (%d:%d)", token.String(), token.Line, token.Start)
+	return fmt.Errorf("unexpected token %s (line %d)", token.String(), token.Line)
 }
 
 // Use -1 to indicate the end of the file
@@ -111,9 +118,6 @@ func (l *Lexer) step() {
 	l.cp = codePoint
 	l.end = l.next
 	l.next += width
-	if l.cp == '\n' {
-		l.line++
-	}
 }
 
 func (l *Lexer) pushState(state state) {
@@ -141,6 +145,9 @@ func initialState(l *Lexer) (t token.Type) {
 	switch {
 	case l.cp == eof:
 		return token.EOF
+	case isNewline(l.cp):
+		l.step()
+		return token.Space
 	case isSpace(l.cp):
 		l.step()
 		for isSpace(l.cp) {
@@ -242,6 +249,9 @@ func blockState(l *Lexer) token.Type {
 		l.step()
 		l.popState()
 		return token.CloseCurly
+	case isNewline(l.cp):
+		l.step()
+		return token.Space
 	case isSpace(l.cp):
 		l.step()
 		for isSpace(l.cp) {
@@ -260,23 +270,50 @@ func blockState(l *Lexer) token.Type {
 		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) || l.cp == '_' {
 			l.step()
 		}
+		// Handle url() function
+		if l.cp == '(' && l.input[l.start:l.end] == "url" {
+			l.pushState(startUrlState)
+		}
 		return token.Identifier
 	case l.cp == '*':
 		l.step()
 		return token.Star
 	case l.cp == ':':
 		l.step()
+		if l.cp == ':' {
+			l.step()
+			return token.ColonColon
+		}
 		return token.Colon
 	case l.cp == ';':
 		l.step()
 		return token.Semicolon
 	case l.cp == '#':
 		l.step()
-		return hexState(l)
-	case isNumeric(l.cp):
+		if isAlpha(l.cp) || isNumeric(l.cp) {
+			l.pushState(hashState)
+		}
+		return token.Hash
+	case l.cp == '0':
 		l.step()
-		for isNumeric(l.cp) || l.cp == '.' {
+		if l.cp == '.' {
 			l.step()
+			for isNumeric(l.cp) {
+				l.step()
+			}
+			return token.Number
+		}
+		return token.Number
+	case isNumber(l.cp):
+		l.step()
+		for isNumeric(l.cp) {
+			l.step()
+		}
+		if l.cp == '.' {
+			l.step()
+			for isNumeric(l.cp) {
+				l.step()
+			}
 		}
 		return token.Number
 	case l.cp == '.':
@@ -317,7 +354,7 @@ func blockState(l *Lexer) token.Type {
 		return token.Exclamation
 	case l.cp == '(':
 		l.step()
-		l.pushState(functionState)
+		l.pushState(parenState)
 		return token.OpenParen
 	case l.cp == '>':
 		l.step()
@@ -325,6 +362,17 @@ func blockState(l *Lexer) token.Type {
 	case l.cp == '+':
 		l.step()
 		return token.Plus
+	case l.cp == '@':
+		l.step()
+		return token.At
+	case l.cp == '\\':
+		l.step()
+		if l.cp == '9' {
+			// Ignore IE9 hack \9
+			l.step()
+			return token.Comment
+		}
+		return l.unexpected()
 	default:
 		l.step()
 		for l.cp != '}' && l.cp != eof {
@@ -343,6 +391,9 @@ func parenState(l *Lexer) token.Type {
 		l.step()
 		l.popState()
 		return token.CloseParen
+	case isNewline(l.cp):
+		l.step()
+		return token.Space
 	case isSpace(l.cp):
 		l.step()
 		for isSpace(l.cp) {
@@ -374,22 +425,35 @@ func parenState(l *Lexer) token.Type {
 	case l.cp == ',':
 		l.step()
 		return token.Comma
+	case l.cp == '*':
+		l.step()
+		return token.Star
 	case l.cp == '#':
 		l.step()
-		return hexState(l)
-	case isNumeric(l.cp):
+		if isAlpha(l.cp) || isNumeric(l.cp) {
+			l.pushState(hashState)
+		}
+		return token.Hash
+	case l.cp == '0':
+		l.step()
+		if l.cp == '.' {
+			l.step()
+			for isNumeric(l.cp) {
+				l.step()
+			}
+			return token.Number
+		}
+		return token.Number
+	case isNumber(l.cp):
 		l.step()
 		for isNumeric(l.cp) {
 			l.step()
 		}
 		if l.cp == '.' {
 			l.step()
-		} else if l.cp == 'n' {
-			l.step()
-			return token.Nth
-		}
-		for isNumeric(l.cp) {
-			l.step()
+			for isNumeric(l.cp) {
+				l.step()
+			}
 		}
 		return token.Number
 	case l.cp == '%':
@@ -400,9 +464,6 @@ func parenState(l *Lexer) token.Type {
 		if l.cp == '-' {
 			l.step()
 			return token.DashDash
-		} else if l.cp == 'n' {
-			l.step()
-			return token.Nth
 		} else if isNumeric(l.cp) {
 			l.step()
 			for isNumeric(l.cp) {
@@ -410,9 +471,6 @@ func parenState(l *Lexer) token.Type {
 			}
 			if l.cp == '.' {
 				l.step()
-			} else if l.cp == 'n' {
-				l.step()
-				return token.Nth
 			}
 			for isNumeric(l.cp) {
 				l.step()
@@ -425,7 +483,18 @@ func parenState(l *Lexer) token.Type {
 		return token.Plus
 	case l.cp == '>':
 		l.step()
+		if l.cp == '=' {
+			l.step()
+			return token.GreaterThanEqual
+		}
 		return token.GreaterThan
+	case l.cp == '<':
+		l.step()
+		if l.cp == '=' {
+			l.step()
+			return token.LessThanEqual
+		}
+		return token.LessThan
 	case l.cp == '~':
 		l.step()
 		return token.Tilde
@@ -450,36 +519,6 @@ func parenState(l *Lexer) token.Type {
 	}
 }
 
-func functionState(l *Lexer) token.Type {
-	switch {
-	case l.cp == eof:
-		return l.unexpected()
-	case l.cp == ')':
-		l.step()
-		l.popState()
-		return token.CloseParen
-	case isSpace(l.cp):
-		l.step()
-		for isSpace(l.cp) {
-			l.step()
-		}
-		return token.Space
-	case l.cp == ',':
-		l.step()
-		return token.Comma
-	case l.cp == '(':
-		l.step()
-		l.pushState(functionState)
-		return token.OpenParen
-	default:
-		l.step()
-		for l.cp != ')' && l.cp != ',' && l.cp != '(' && !isSpace(l.cp) && l.cp != eof {
-			l.step()
-		}
-		return token.Raw
-	}
-}
-
 func bracketState(l *Lexer) token.Type {
 	switch {
 	case l.cp == eof:
@@ -488,6 +527,9 @@ func bracketState(l *Lexer) token.Type {
 		l.step()
 		l.popState()
 		return token.CloseBracket
+	case isNewline(l.cp):
+		l.step()
+		return token.Space
 	case isSpace(l.cp):
 		l.step()
 		for isSpace(l.cp) {
@@ -599,36 +641,45 @@ func stringState(l *Lexer, end rune) (t token.Type) {
 	}
 }
 
-// func isHex
+func hashState(l *Lexer) token.Type {
+	l.popState()
+	for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) || l.cp == '_' {
+		l.step()
+	}
+	return token.Identifier
+}
 
-func hexState(l *Lexer) token.Type {
-	// Minimum of 3 hex digits
-	for i := 0; i < 3; i++ {
-		if !isHex(l.cp) {
-			return l.unexpected()
-		}
-		l.step()
-	}
-	if !isHex(l.cp) {
-		return token.Hex
+func startUrlState(l *Lexer) token.Type {
+	if l.cp != '(' {
+		return l.errorf("expected '(' after url")
 	}
 	l.step()
-	// Also supports 6 hex digits
-	for i := 0; i < 2; i++ {
-		if !isHex(l.cp) {
-			return l.unexpected()
+	l.popState()
+	l.pushState(urlState)
+	return token.OpenParen
+}
+
+func urlState(l *Lexer) token.Type {
+	switch l.cp {
+	case eof, '(', '\n':
+		return l.unexpected()
+	case ')':
+		l.step()
+		l.popState()
+		return token.CloseParen
+	case '"':
+		l.step()
+		return stringState(l, '"')
+	case '\'':
+		l.step()
+		return stringState(l, '\'')
+	default:
+		l.step()
+		for l.cp != ')' && l.cp != eof {
+			l.step()
 		}
-		l.step()
+		return token.String
 	}
-	if !isHex(l.cp) {
-		return token.Hex
-	}
-	l.step()
-	// Lastly, supports 8 hex digits
-	if isHex(l.cp) {
-		l.step()
-	}
-	return token.Hex
 }
 
 func commentState(l *Lexer) token.Type {
@@ -643,7 +694,6 @@ func commentState(l *Lexer) token.Type {
 				return token.Comment
 			}
 		case l.cp == '\n':
-			l.line++
 			l.step()
 		default:
 			l.step()
@@ -655,8 +705,8 @@ func isAlpha(cp rune) bool {
 	return (cp >= 'a' && cp <= 'z') || (cp >= 'A' && cp <= 'Z')
 }
 
-func isHex(cp rune) bool {
-	return isNumeric(cp) || (cp >= 'a' && cp <= 'f') || (cp >= 'A' && cp <= 'F')
+func isNumber(cp rune) bool {
+	return cp >= '1' && cp <= '9'
 }
 
 func isNumeric(cp rune) bool {
@@ -668,5 +718,9 @@ func isDash(cp rune) bool {
 }
 
 func isSpace(cp rune) bool {
-	return cp == ' ' || cp == '\t' || cp == '\n' || cp == '\r'
+	return cp == ' ' || cp == '\t' || cp == '\r'
+}
+
+func isNewline(cp rune) bool {
+	return cp == '\n'
 }

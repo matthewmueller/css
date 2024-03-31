@@ -17,6 +17,7 @@ type Node interface {
 
 var (
 	_ Node = &Stylesheet{}
+	_ Node = &Comment{}
 )
 
 type Stylesheet struct {
@@ -36,6 +37,18 @@ func (s *Stylesheet) String() string {
 
 func (s *Stylesheet) Visit(v Visitor) {
 	v.VisitStylesheet(s)
+}
+
+type Comment struct {
+	Value string
+}
+
+func (s *Comment) String() string {
+	return "/*" + s.Value + "*/"
+}
+
+func (s *Comment) Visit(v Visitor) {
+	// v.VisitComment(s)
 }
 
 type Rule interface {
@@ -83,8 +96,10 @@ func (s *StyleRule) Visit(v Visitor) {
 }
 
 type MediaRule struct {
-	Queries []*MediaQuery
-	Rules   []Rule
+	// Qualifier string // only or not
+	// MediaType string
+	Condition *MediaCondition
+	Rules     []Rule
 }
 
 func (*MediaRule) rule() {}
@@ -92,17 +107,17 @@ func (*MediaRule) rule() {}
 func (s *MediaRule) String() string {
 	sb := new(strings.Builder)
 	sb.WriteString("@media ")
-	for i, q := range s.Queries {
-		if i > 0 {
-			sb.WriteString(", ")
+	sb.WriteString(s.Condition.String())
+	sb.WriteString(" {")
+	if len(s.Rules) > 0 {
+		sb.WriteString("\n")
+		for _, r := range s.Rules {
+			sb.WriteString("  ")
+			sb.WriteString(r.String())
+			sb.WriteString("\n")
 		}
-		sb.WriteString(q.String())
 	}
-	sb.WriteString(" { ")
-	for _, r := range s.Rules {
-		sb.WriteString(r.String())
-	}
-	sb.WriteString(" }")
+	sb.WriteString("}")
 	return sb.String()
 }
 
@@ -113,14 +128,33 @@ func (s *MediaRule) Visit(v Visitor) {
 type ImportRule struct {
 	Url      string
 	Layers   []string
-	Queries  []*MediaQuery
+	Media    *MediaCondition
 	Supports SupportsCondition
 }
 
 func (*ImportRule) rule() {}
 
 func (s *ImportRule) String() string {
-	return ""
+	sb := new(strings.Builder)
+	sb.WriteString("@import ")
+	if s.Url != "" {
+		sb.WriteString("url(")
+		sb.WriteString(strconv.Quote(s.Url))
+		sb.WriteString(")")
+	}
+	if s.Media != nil {
+		sb.WriteString(" ")
+		sb.WriteString(s.Media.String())
+	}
+	if s.Layers != nil {
+		sb.WriteString(" layer(")
+		for _, l := range s.Layers {
+			sb.WriteString(l)
+		}
+		sb.WriteString(")")
+	}
+	sb.WriteString(";")
+	return sb.String()
 }
 
 func (s *ImportRule) Visit(v Visitor) {
@@ -212,59 +246,156 @@ func (s *FontFaceRule) Visit(v Visitor) {
 	// v.VisitFontFaceRule(s)
 }
 
-// https://drafts.csswg.org/mediaqueries/#media
-type MediaQuery struct {
-	Qualifier string // only or not
-	MediaType string
-	Condition MediaCondition
+// // https://drafts.csswg.org/mediaqueries/#media
+// type MediaQuery struct {
+// 	Qualifier string // only or not
+// 	MediaType string
+// 	Condition *MediaCondition
+// }
+
+// var _ Node = (*MediaQuery)(nil)
+
+// func (s *MediaQuery) String() string {
+// 	sb := new(strings.Builder)
+// 	if s.Qualifier != "" {
+// 		sb.WriteString(s.Qualifier)
+// 		sb.WriteString(" ")
+// 	}
+// 	if s.MediaType != "" {
+// 		sb.WriteString(s.MediaType)
+// 		if s.Condition != nil {
+// 			sb.WriteString(" and ")
+// 		}
+// 	}
+// 	if s.Condition != nil {
+// 		sb.WriteString(s.Condition.String())
+// 	}
+// 	return sb.String()
+// }
+
+// func (s *MediaQuery) Visit(v Visitor) {
+// 	// v.VisitMediaQuery(s)
+// }
+
+type MediaConstraint interface {
+	Node
+	mediaConstraint()
 }
 
-var _ Node = (*MediaQuery)(nil)
+var (
+	_ MediaConstraint = (*MediaType)(nil)
+	_ MediaConstraint = (*MediaFeature)(nil)
+)
 
-func (s *MediaQuery) String() string {
+type MediaType struct {
+	Name string
+}
+
+func (*MediaType) mediaConstraint() {}
+
+func (s *MediaType) String() string {
+	return s.Name
+}
+
+func (s *MediaType) Visit(v Visitor) {
+	// v.VisitMediaType(s)
+}
+
+type MediaFeature struct {
+	Name   string
+	Before *MediaFeatureCondition
+	After  *MediaFeatureCondition
+}
+
+type MediaFeatureCondition struct {
+	Operator string
+	Value    Value
+}
+
+func (*MediaFeature) mediaConstraint() {}
+
+func (s *MediaFeature) String() string {
 	sb := new(strings.Builder)
-	if s.Qualifier != "" {
-		sb.WriteString(s.Qualifier)
+	sb.WriteString("(")
+	if s.Before != nil {
+		sb.WriteString(s.Before.Value.String())
+		if s.Before.Operator != ":" {
+			sb.WriteString(" ")
+		}
+		sb.WriteString(s.Before.Operator)
 		sb.WriteString(" ")
 	}
-	if s.MediaType != "" {
-		sb.WriteString(s.MediaType)
-		if s.Condition != nil {
-			sb.WriteString(" and ")
+	sb.WriteString(s.Name)
+	if s.After != nil {
+		if s.After.Operator != ":" {
+			sb.WriteString(" ")
 		}
+		sb.WriteString(s.After.Operator)
+		sb.WriteString(" ")
+		sb.WriteString(s.After.Value.String())
 	}
-	if s.Condition != nil {
-		sb.WriteString(s.Condition.String())
+	sb.WriteString(")")
+	return sb.String()
+}
+
+func (s *MediaFeature) Visit(v Visitor) {
+	// v.VisitMediaFeature(s)
+}
+
+type MediaCondition struct {
+	Operator   string
+	Constraint MediaConstraint
+	Right      *MediaCondition
+}
+
+func (c *MediaCondition) String() string {
+	sb := new(strings.Builder)
+	if c.Operator == "not" || c.Operator == "only" {
+		sb.WriteString(c.Operator)
+		sb.WriteString(" ")
+		sb.WriteString(c.Right.String())
+		return sb.String()
+	}
+	sb.WriteString(c.Constraint.String())
+	if c.Operator != "" {
+		if c.Operator != "," {
+			sb.WriteString(" ")
+		}
+		sb.WriteString(c.Operator)
+	}
+	if c.Right != nil {
+		sb.WriteString(" ")
+		sb.WriteString(c.Right.String())
 	}
 	return sb.String()
 }
 
-func (s *MediaQuery) Visit(v Visitor) {
-	// v.VisitMediaQuery(s)
+func (*MediaCondition) Visit(v Visitor) {
+	// v.VisitMediaCondition(s)
 }
 
-type MediaCondition interface {
-	Node
-	mediaCondition()
-}
+// type MediaCondition interface {
+// 	Node
+// 	mediaCondition()
+// }
 
-var (
-	_ MediaCondition = (*RawMediaCondition)(nil)
-)
+// var (
+// 	_ MediaCondition = (*RawMediaCondition)(nil)
+// )
 
-type RawMediaCondition struct {
-	Value string
-}
+// type RawMediaCondition struct {
+// 	Value string
+// }
 
-func (*RawMediaCondition) mediaCondition() {}
+// func (*RawMediaCondition) mediaCondition() {}
 
-func (s *RawMediaCondition) String() string {
-	return "(" + s.Value + ")"
-}
+// func (s *RawMediaCondition) String() string {
+// 	return "(" + s.Value + ")"
+// }
 
-func (s *RawMediaCondition) Visit(v Visitor) {
-	// v.VisitRawMediaCondition(s)
-}
+// func (s *RawMediaCondition) Visit(v Visitor) {
+// 	// v.VisitRawMediaCondition(s)
+// }
 
 type SupportsCondition interface {
 	Node
@@ -283,6 +414,20 @@ func (s *SupportsRule) String() string {
 
 func (s *SupportsRule) Visit(v Visitor) {
 	// v.VisitSupportsRule(s)
+}
+
+type CharsetRule struct {
+	Charset string
+}
+
+func (*CharsetRule) rule() {}
+
+func (s *CharsetRule) String() string {
+	return "@charset \"" + s.Charset + "\";"
+}
+
+func (s *CharsetRule) Visit(v Visitor) {
+	// v.VisitCharsetRule(s)
 }
 
 type Selector struct {
@@ -577,8 +722,11 @@ type Declaration struct {
 func (s *Declaration) String() string {
 	sb := new(strings.Builder)
 	sb.WriteString(s.Property)
-	sb.WriteString(": ")
-	sb.WriteString(s.Value.String())
+	sb.WriteString(":")
+	if s.Value != nil {
+		sb.WriteString(" ")
+		sb.WriteString(s.Value.String())
+	}
 	if s.Important {
 		sb.WriteString(" !important")
 	}
@@ -599,6 +747,7 @@ var (
 	_ Value = (*Keyword)(nil)
 	_ Value = (*Length)(nil)
 	_ Value = (*Percent)(nil)
+	_ Value = (*Ratio)(nil)
 	_ Value = (*Number)(nil)
 	_ Value = (*StringValue)(nil)
 	_ Value = (*FunctionValue)(nil)
@@ -681,6 +830,22 @@ func (s *Percent) Visit(v Visitor) {
 	// v.VisitPercentValue(s)
 }
 
+type Ratio struct {
+	Numerator   float64
+	Denominator float64
+}
+
+func (*Ratio) value()    {}
+func (*Ratio) argument() {}
+
+func (s *Ratio) String() string {
+	return strconv.FormatFloat(s.Numerator, 'f', -1, 64) + "/" + strconv.FormatFloat(s.Denominator, 'f', -1, 64)
+}
+
+func (s *Ratio) Visit(v Visitor) {
+	// v.VisitRatioValue(s)
+}
+
 type Number struct {
 	Value float64
 }
@@ -719,7 +884,7 @@ func (*RawValue) value()    {}
 func (*RawValue) argument() {}
 
 func (s *RawValue) String() string {
-	return s.Value
+	return strings.TrimSpace(s.Value)
 }
 
 func (s *RawValue) Visit(v Visitor) {

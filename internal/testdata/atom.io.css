@@ -303,7 +303,6 @@ dl.form.required > dt > label:after {
 }
 @media only screen and (-webkit-min-device-pixel-ratio: 2),
   only screen and (min--moz-device-pixel-ratio: 2),
-  only screen and (-o-min-device-pixel-ratio: 2 / 1),
   only screen and (min-device-pixel-ratio: 2),
   only screen and (min-resolution: 2dppx) {
   .form-cards > .cards .card {
@@ -1279,8 +1278,8 @@ p.explain .minibutton {
 .tooltipped-multiline.tooltipped-e:after {
   right: 100%;
 }
-@media screen and (min-width: 0 0) {
-  .tooltipped-multiline: after {
+@media screen and (min-width: 0) {
+  .tooltipped-multiline:after {
     width: 250px;
   }
 }

@@ -4017,7 +4017,7 @@ a.tabnav-extra:hover {
 .tooltipped-multiline.tooltipped-e::after {
   right: 100%;
 }
-@media screen and (min-width: 0 0) {
+@media screen and (min-width: 0) {
   .tooltipped-multiline::after {
     width: 250px;
   }
