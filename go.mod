@@ -2,10 +2,7 @@ module github.com/matthewmueller/css
 
 go 1.22.0
 
-require (
-	github.com/evanw/esbuild v0.20.2
-	github.com/matthewmueller/diff v0.0.2
-)
+require github.com/matthewmueller/diff v0.0.2
 
 require (
 	github.com/google/go-cmp v0.5.6 // indirect
