@@ -44,7 +44,6 @@ func TestSample(t *testing.T) {
 	equal(t, ".container::before, .container::after {}", `.container.jsx-123::before, .container.jsx-123::after {  }`)
 	equal(t, "header ~ footer {}", `header.jsx-123 ~ footer.jsx-123 {  }`)
 	equal(t, "header + footer {}", `header.jsx-123 + footer.jsx-123 {  }`)
-	equal(t, "@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }", `@keyframes fadeIn-jsx-123 { from { opacity: 0 } to { opacity: 1 } }`)
 	equal(t, "[data-theme='dark'] {}", `.jsx-123[data-theme='dark'] {  }`)
 	equal(t, `
 		.box {
@@ -83,7 +82,6 @@ func TestComplex(t *testing.T) {
 	equal(t, `@supports selector(:not(.h2)) {}`, `@supports selector(.jsx-123:not(.h2)) {}`)
 	equal(t, `@supports font-tech(color-COLRv1) {}`, `@supports font-tech(color-COLRv1) {}`)
 	equal(t, ":root { --main-bg-color: #0063e5; }", `.jsx-123:root { --main-bg-color: #0063e5 }`)
-	equal(t, "@keyframes slidein { from {} to {} }", `@keyframes slidein-jsx-123 { from {  } to {  } }`)
 	equal(t, `audio:not([controls]) {}`, `audio.jsx-123:not([controls]) {  }`)
 	equal(t, `@media print { a[href]:after {} }`, "@media print {\n  a.jsx-123[href]:after {  }\n}")
 	equal(t, `@media print { .btn > .caret {} }`, "@media print {\n  .btn.jsx-123 > .caret.jsx-123 {  }\n}")
@@ -99,4 +97,11 @@ func TestComplex(t *testing.T) {
 	equal(t, `.card-group > .card:not(:last-child) {}`, ".card-group.jsx-123 > .card.jsx-123:not(:last-child) {  }")
 	equal(t, `@media screen { .card-group > .card:not(:last-child) {} }`, "@media screen {\n  .card-group.jsx-123 > .card.jsx-123:not(:last-child) {  }\n}")
 	equal(t, `.display-none{}`, ".display-none.jsx-123 {  }")
+}
+
+func TestScopedKeyframe(t *testing.T) {
+	t.Skip("scoped keyframes are not supported yet")
+	equal(t, "@keyframe slideIn { from { } to { } } header + footer { animation: 3s linear 1s slidein; }", ``)
+	equal(t, "@keyframe slideOut { from { } to { } } header + footer { animation: slideOut 5s infinite; }", ``)
+	equal(t, "@keyframe slideOut { from { } to { } } header + footer { animation-name: slideOut; }", ``)
 }

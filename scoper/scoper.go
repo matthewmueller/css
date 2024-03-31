@@ -1,8 +1,6 @@
 package scoper
 
 import (
-	"strings"
-
 	"github.com/matthewmueller/css"
 	"github.com/matthewmueller/css/ast"
 	"github.com/matthewmueller/css/internal/parser"
@@ -52,9 +50,6 @@ func ScopeAST(path, scope string, stylesheet *ast.Stylesheet) (*ast.Stylesheet, 
 			scoped = append(scoped, scoping)
 		}
 		n.Components = scoped
-	}
-	visitor.KeyFramesRule = func(n *ast.KeyFramesRule) {
-		n.Name += strings.Replace(scope, ".", "-", -1)
 	}
 	stylesheet.Visit(visitor)
 	return stylesheet, nil
