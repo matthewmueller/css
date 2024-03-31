@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-type Visitor interface {
-	VisitStylesheet(*Stylesheet)
-}
-
 type Node interface {
 	String() string
 	Visit(Visitor)
@@ -48,7 +44,7 @@ func (s *Comment) String() string {
 }
 
 func (s *Comment) Visit(v Visitor) {
-	// v.VisitComment(s)
+	v.VisitComment(s)
 }
 
 type Rule interface {
@@ -92,12 +88,10 @@ func (s *StyleRule) String() string {
 }
 
 func (s *StyleRule) Visit(v Visitor) {
-	// v.VisitStyleRule(s)
+	v.VisitStyleRule(s)
 }
 
 type MediaRule struct {
-	// Qualifier string // only or not
-	// MediaType string
 	Condition *MediaCondition
 	Rules     []Rule
 }
@@ -122,7 +116,7 @@ func (s *MediaRule) String() string {
 }
 
 func (s *MediaRule) Visit(v Visitor) {
-	// v.VisitMediaRule(s)
+	v.VisitMediaRule(s)
 }
 
 type ImportRule struct {
@@ -163,12 +157,12 @@ func (s *ImportRule) String() string {
 }
 
 func (s *ImportRule) Visit(v Visitor) {
-	// v.VisitImportRule(s)
+	v.VisitImportRule(s)
 }
 
 type KeyFramesRule struct {
 	Name      string
-	Keyframes []*Keyframe
+	Keyframes []*KeyFrame
 }
 
 func (*KeyFramesRule) rule() {}
@@ -189,17 +183,17 @@ func (s *KeyFramesRule) String() string {
 }
 
 func (s *KeyFramesRule) Visit(v Visitor) {
-	// v.VisitKeyFramesRule(s)
+	v.VisitKeyFramesRule(s)
 }
 
-type Keyframe struct {
-	Selectors    []KeyframeSelector
+type KeyFrame struct {
+	Selectors    []KeyFrameSelector
 	Declarations []*Declaration
 }
 
-var _ = (*Keyframe)(nil)
+var _ = (*KeyFrame)(nil)
 
-func (s *Keyframe) String() string {
+func (s *KeyFrame) String() string {
 	sb := new(strings.Builder)
 	for i, sel := range s.Selectors {
 		if i > 0 {
@@ -218,14 +212,18 @@ func (s *Keyframe) String() string {
 	return sb.String()
 }
 
-type KeyframeSelector interface {
+func (s *KeyFrame) Visit(v Visitor) {
+	v.VisitKeyFrame(s)
+}
+
+type KeyFrameSelector interface {
 	Node
-	keyframeSelector()
+	keyFrameSelector()
 }
 
 var (
-	_ KeyframeSelector = (*Keyword)(nil)
-	_ KeyframeSelector = (*Percent)(nil)
+	_ KeyFrameSelector = (*Keyword)(nil)
+	_ KeyFrameSelector = (*Percent)(nil)
 )
 
 type FontFaceRule struct {
@@ -248,7 +246,7 @@ func (s *FontFaceRule) String() string {
 }
 
 func (s *FontFaceRule) Visit(v Visitor) {
-	// v.VisitFontFaceRule(s)
+	v.VisitFontFaceRule(s)
 }
 
 type MediaConstraint interface {
@@ -272,7 +270,7 @@ func (s *MediaType) String() string {
 }
 
 func (s *MediaType) Visit(v Visitor) {
-	// v.VisitMediaType(s)
+	v.VisitMediaType(s)
 }
 
 type MediaFeature struct {
@@ -313,7 +311,7 @@ func (s *MediaFeature) String() string {
 }
 
 func (s *MediaFeature) Visit(v Visitor) {
-	// v.VisitMediaFeature(s)
+	v.VisitMediaFeature(s)
 }
 
 type MediaCondition struct {
@@ -344,14 +342,9 @@ func (c *MediaCondition) String() string {
 	return sb.String()
 }
 
-func (*MediaCondition) Visit(v Visitor) {
-	// v.VisitMediaCondition(s)
+func (c *MediaCondition) Visit(v Visitor) {
+	v.VisitMediaCondition(c)
 }
-
-// type SupportConstraint interface {
-// 	Node
-// 	supportsConstraint()
-// }
 
 var (
 	_ SupportsField = (*SupportsProperty)(nil)
@@ -384,7 +377,7 @@ func (s *SupportsRule) String() string {
 }
 
 func (s *SupportsRule) Visit(v Visitor) {
-	// v.VisitSupportsRule(s)
+	v.VisitSupportsRule(s)
 }
 
 type SupportsCondition struct {
@@ -411,6 +404,10 @@ func (c *SupportsCondition) String() string {
 	return sb.String()
 }
 
+func (c *SupportsCondition) Visit(v Visitor) {
+	v.VisitSupportsCondition(c)
+}
+
 type SupportsField interface {
 	Node
 	supportsField()
@@ -434,7 +431,7 @@ func (s *SupportsProperty) String() string {
 }
 
 func (s *SupportsProperty) Visit(v Visitor) {
-	// v.VisitSupportsCondition(s)
+	v.VisitSupportsProperty(s)
 }
 
 type SupportsFunction struct {
@@ -459,7 +456,7 @@ func (s *SupportsFunction) String() string {
 }
 
 func (s *SupportsFunction) Visit(v Visitor) {
-	// v.VisitSupportsFunction(s)
+	v.VisitSupportsFunction(s)
 }
 
 type CharsetRule struct {
@@ -473,7 +470,7 @@ func (s *CharsetRule) String() string {
 }
 
 func (s *CharsetRule) Visit(v Visitor) {
-	// v.VisitCharsetRule(s)
+	v.VisitCharsetRule(s)
 }
 
 type Selector struct {
@@ -493,7 +490,7 @@ func (s *Selector) String() string {
 }
 
 func (s *Selector) Visit(v Visitor) {
-	// v.VisitSelector(s)
+	v.VisitSelector(s)
 }
 
 type Argument interface {
@@ -503,7 +500,7 @@ type Argument interface {
 
 var (
 	_ Argument = (*Selector)(nil)
-	_ Argument = (*Separator)(nil)
+	_ Argument = (*CombinatorComponent)(nil)
 	_ Argument = (*Keyword)(nil)
 	_ Argument = (*Number)(nil)
 	_ Argument = (*Percent)(nil)
@@ -539,7 +536,7 @@ func (s *AnPlusB) String() string {
 }
 
 func (s *AnPlusB) Visit(v Visitor) {
-	// v.VisitAnPlusB(s)
+	v.VisitAnPlusB(s)
 }
 
 type SelectorComponent interface {
@@ -548,7 +545,7 @@ type SelectorComponent interface {
 }
 
 var (
-	_ SelectorComponent = (*Separator)(nil)
+	_ SelectorComponent = (*CombinatorComponent)(nil)
 	_ SelectorComponent = (*UniversalComponent)(nil)
 	_ SelectorComponent = (*NamespaceComponent)(nil)
 	_ SelectorComponent = (*ElementComponent)(nil)
@@ -560,15 +557,15 @@ var (
 	_ SelectorComponent = (*NestingComponent)(nil)
 )
 
-type Separator struct {
+type CombinatorComponent struct {
 	Value string
 }
 
-func (*Separator) selectorComponent() {}
-func (*Separator) argument()          {}
-func (*Separator) value()             {}
+func (*CombinatorComponent) selectorComponent() {}
+func (*CombinatorComponent) argument()          {}
+func (*CombinatorComponent) value()             {}
 
-func (c *Separator) String() string {
+func (c *CombinatorComponent) String() string {
 	switch c.Value {
 	case " ":
 		return " "
@@ -579,8 +576,8 @@ func (c *Separator) String() string {
 	}
 }
 
-func (c *Separator) Visit(v Visitor) {
-	// v.VisitCombinatorComponent(c)
+func (c *CombinatorComponent) Visit(v Visitor) {
+	v.VisitCombinatorComponent(c)
 }
 
 type UniversalComponent struct{}
@@ -591,8 +588,8 @@ func (*UniversalComponent) String() string {
 	return "*"
 }
 
-func (*UniversalComponent) Visit(v Visitor) {
-	// v.VisitUniversalComponent(c)
+func (c *UniversalComponent) Visit(v Visitor) {
+	v.VisitUniversalComponent(c)
 }
 
 type NamespaceComponent struct {
@@ -606,8 +603,8 @@ func (*NamespaceComponent) String() string {
 	return ""
 }
 
-func (*NamespaceComponent) Visit(v Visitor) {
-	// v.VisitNamespaceComponent(c)
+func (c *NamespaceComponent) Visit(v Visitor) {
+	v.VisitNamespaceComponent(c)
 }
 
 type ElementComponent struct {
@@ -620,8 +617,8 @@ func (e *ElementComponent) String() string {
 	return e.Name
 }
 
-func (*ElementComponent) Visit(v Visitor) {
-	// v.VisitElementComponent(c)
+func (c *ElementComponent) Visit(v Visitor) {
+	v.VisitElementComponent(c)
 }
 
 type IdComponent struct {
@@ -635,7 +632,7 @@ func (c *IdComponent) String() string {
 }
 
 func (c *IdComponent) Visit(v Visitor) {
-	// v.VisitIdComponent(c)
+	v.VisitIdComponent(c)
 }
 
 type ClassComponent struct {
@@ -649,7 +646,7 @@ func (c *ClassComponent) String() string {
 }
 
 func (c *ClassComponent) Visit(v Visitor) {
-	// v.VisitClassComponent(c)
+	v.VisitClassComponent(c)
 }
 
 type PseudoClassComponent struct {
@@ -677,7 +674,7 @@ func (c *PseudoClassComponent) String() string {
 }
 
 func (c *PseudoClassComponent) Visit(v Visitor) {
-	// v.VisitPseudoClassComponent(c)
+	v.VisitPseudoClassComponent(c)
 }
 
 type PseudoElementComponent struct {
@@ -705,12 +702,13 @@ func (c *PseudoElementComponent) String() string {
 }
 
 func (c *PseudoElementComponent) Visit(v Visitor) {
-	// v.VisitPseudoElementComponent(c)
+	v.VisitPseudoElementComponent(c)
 }
 
 type AttributeComponent struct {
-	Name      string
-	Operation *AttributeOperation
+	Name     string
+	Operator string
+	Value    Value
 }
 
 var _ Node = (*AttributeComponent)(nil)
@@ -721,30 +719,18 @@ func (c *AttributeComponent) String() string {
 	sb := new(strings.Builder)
 	sb.WriteString("[")
 	sb.WriteString(c.Name)
-	if c.Operation != nil {
-		sb.WriteString(c.Operation.String())
+	if c.Operator != "" {
+		sb.WriteString(c.Operator)
+	}
+	if c.Value != nil {
+		sb.WriteString(c.Value.String())
 	}
 	sb.WriteString("]")
 	return sb.String()
 }
 
-type AttributeOperation struct {
-	Operator string
-	Value    string
-}
-
-var _ Node = (*AttributeOperation)(nil)
-
-func (s *AttributeOperation) String() string {
-	return s.Operator + s.Value
-}
-
-func (s *AttributeOperation) Visit(v Visitor) {
-	// v.VisitAttributeOperation(s)
-}
-
-func (*AttributeComponent) Visit(v Visitor) {
-	// v.VisitAttributeComponent(c)
+func (c *AttributeComponent) Visit(v Visitor) {
+	v.VisitAttributeComponent(c)
 }
 
 type NestingComponent struct{}
@@ -755,8 +741,8 @@ func (*NestingComponent) String() string {
 	return ""
 }
 
-func (*NestingComponent) Visit(v Visitor) {
-	// v.VisitNestingComponent(c)
+func (c *NestingComponent) Visit(v Visitor) {
+	v.VisitNestingComponent(c)
 }
 
 type Declaration struct {
@@ -780,7 +766,7 @@ func (s *Declaration) String() string {
 }
 
 func (s *Declaration) Visit(v Visitor) {
-	// v.VisitDeclaration(s)
+	v.VisitDeclaration(s)
 }
 
 type Value interface {
@@ -798,7 +784,7 @@ var (
 	_ Value = (*StringValue)(nil)
 	_ Value = (*FunctionValue)(nil)
 	_ Value = (*RawValue)(nil)
-	_ Value = (*Separator)(nil)
+	_ Value = (*CombinatorComponent)(nil)
 	_ Value = (*ListValue)(nil)
 )
 
@@ -808,14 +794,14 @@ type Keyword struct {
 
 func (*Keyword) value()            {}
 func (*Keyword) argument()         {}
-func (*Keyword) keyframeSelector() {}
+func (*Keyword) keyFrameSelector() {}
 
 func (s *Keyword) String() string {
 	return s.Name
 }
 
 func (s *Keyword) Visit(v Visitor) {
-	// v.VisitKeywordValue(s)
+	v.VisitKeywordValue(s)
 }
 
 type FunctionValue struct {
@@ -841,7 +827,7 @@ func (s *FunctionValue) String() string {
 }
 
 func (s *FunctionValue) Visit(v Visitor) {
-	// v.VisitFunctionValue(s)
+	v.VisitFunctionValue(s)
 }
 
 type Length struct {
@@ -857,7 +843,7 @@ func (s *Length) String() string {
 }
 
 func (s *Length) Visit(v Visitor) {
-	// v.VisitLengthValue(s)
+	v.VisitLengthValue(s)
 }
 
 type Percent struct {
@@ -866,14 +852,14 @@ type Percent struct {
 
 func (*Percent) value()            {}
 func (*Percent) argument()         {}
-func (*Percent) keyframeSelector() {}
+func (*Percent) keyFrameSelector() {}
 
 func (s *Percent) String() string {
 	return strconv.FormatFloat(s.Value, 'f', -1, 64) + "%"
 }
 
 func (s *Percent) Visit(v Visitor) {
-	// v.VisitPercentValue(s)
+	v.VisitPercentValue(s)
 }
 
 type Ratio struct {
@@ -889,7 +875,7 @@ func (s *Ratio) String() string {
 }
 
 func (s *Ratio) Visit(v Visitor) {
-	// v.VisitRatioValue(s)
+	v.VisitRatioValue(s)
 }
 
 type Number struct {
@@ -904,7 +890,7 @@ func (s *Number) String() string {
 }
 
 func (s *Number) Visit(v Visitor) {
-	// v.VisitNumberValue(s)
+	v.VisitNumberValue(s)
 }
 
 type StringValue struct {
@@ -919,7 +905,7 @@ func (s *StringValue) String() string {
 }
 
 func (s *StringValue) Visit(v Visitor) {
-	// v.VisitStringValue(s)
+	v.VisitStringValue(s)
 }
 
 type RawValue struct {
@@ -934,7 +920,7 @@ func (s *RawValue) String() string {
 }
 
 func (s *RawValue) Visit(v Visitor) {
-	// v.VisitRawValue(s)
+	v.VisitRawValue(s)
 }
 
 type ListValue struct {
@@ -953,5 +939,5 @@ func (s *ListValue) String() string {
 }
 
 func (s *ListValue) Visit(v Visitor) {
-	// v.VisitListValue(s)
+	v.VisitListValue(s)
 }
