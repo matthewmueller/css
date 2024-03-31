@@ -389,13 +389,32 @@ func TestLineNumbers(t *testing.T) {
 	`)
 }
 
+func TestNested(t *testing.T) {
+	equal(t, `label { input { margin: 0 } }`, `ident:"label" space:" " { space:" " ident:"input" space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { & input { margin: 0 } }`, `ident:"label" space:" " { space:" " & space:" " ident:"input" space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { input & { margin: 0 } }`, `ident:"label" space:" " { space:" " ident:"input" space:" " & space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { input>& { margin: 0 } }`, `ident:"label" space:" " { space:" " ident:"input" > & space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { input~& { margin: 0 } }`, `ident:"label" space:" " { space:" " ident:"input" ~ & space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { input+& { margin: 0 } }`, `ident:"label" space:" " { space:" " ident:"input" + & space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { input & & & { margin: 0 } }`, `ident:"label" space:" " { space:" " ident:"input" space:" " & space:" " & space:" " & space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { &>input { margin: 0 } }`, `ident:"label" space:" " { space:" " & > ident:"input" space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { &+input { margin: 0 } }`, `ident:"label" space:" " { space:" " & + ident:"input" space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { &~input { margin: 0 } }`, `ident:"label" space:" " { space:" " & ~ ident:"input" space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { &:hover { margin: 0 } }`, `ident:"label" space:" " { space:" " & : ident:"hover" space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `label { &:hover, &:focus { margin: 0 } }`, `ident:"label" space:" " { space:" " & : ident:"hover" , space:" " & : ident:"focus" space:" " { space:" " ident:"margin" : space:" " number:"0" space:" " } space:" " }`)
+	equal(t, `& { color: blue }`, `& space:" " { space:" " ident:"color" : space:" " ident:"blue" space:" " }`)
+	equal(t, `&:hover { color: blue }`, `& : ident:"hover" space:" " { space:" " ident:"color" : space:" " ident:"blue" space:" " }`)
+}
+
 func TestFile(t *testing.T) {
 	equalFile(t, "normalize.css")
 	equalFile(t, "preflight.css")
 	equalFile(t, "tachyons.css")
+	equalFile(t, "bootstrap4.css")
 	equalFile(t, "bootstrap.css")
 	equalFile(t, "basscss.min.css.txt")
 	equalFile(t, "bootstrap.min.css.txt")
 	equalFile(t, "atom.io.css")
 	equalFile(t, "github.com.css")
+	// equalFile(t, "tailwind.css")
 }

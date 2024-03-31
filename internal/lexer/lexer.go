@@ -232,6 +232,9 @@ func initialState(l *Lexer) (t token.Type) {
 	case l.cp == ';':
 		l.step()
 		return token.Semicolon
+	case l.cp == '&':
+		l.step()
+		return token.Ampersand
 	default:
 		l.step()
 		for l.cp != '{' && l.cp != eof {
@@ -359,12 +362,18 @@ func blockState(l *Lexer) token.Type {
 	case l.cp == '>':
 		l.step()
 		return token.GreaterThan
+	case l.cp == '~':
+		l.step()
+		return token.Tilde
 	case l.cp == '+':
 		l.step()
 		return token.Plus
 	case l.cp == '@':
 		l.step()
 		return token.At
+	case l.cp == '&':
+		l.step()
+		return token.Ampersand
 	case l.cp == '\\':
 		l.step()
 		if l.cp == '9' {

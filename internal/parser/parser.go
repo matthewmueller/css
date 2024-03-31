@@ -268,13 +268,13 @@ func (p *Parser) parseSelector() (*ast.Selector, error) {
 		}
 
 		if p.Accept(token.Plus, token.GreaterThan, token.Tilde) {
-			selector.Components = append(selector.Components, &ast.Separator{
+			selector.Components = append(selector.Components, &ast.CombinatorComponent{
 				Value: p.Text(),
 			})
 			for p.Accept(token.Space, token.Comment) {
 			}
 		} else if hasSpace {
-			selector.Components = append(selector.Components, &ast.Separator{
+			selector.Components = append(selector.Components, &ast.CombinatorComponent{
 				Value: " ",
 			})
 		}
@@ -283,36 +283,31 @@ func (p *Parser) parseSelector() (*ast.Selector, error) {
 }
 
 func (p *Parser) parseAttributeComponent() (*ast.AttributeComponent, error) {
+	node := &ast.AttributeComponent{}
 	for p.Accept(token.Space, token.Comment) {
 	}
 	if err := p.Expect(token.Identifier); err != nil {
 		return nil, err
 	}
-	name := p.Text()
+	node.Name = p.Text()
 	for p.Accept(token.Space, token.Comment) {
 	}
-	var op *ast.AttributeOperation
 	if p.Accept(token.Equal, token.TildeEqual, token.PipeEqual, token.CaretEqual, token.DollarEqual, token.StarEqual) {
-		operator := p.Text()
+		node.Operator = p.Text()
 		for p.Accept(token.Space, token.Comment) {
 		}
-		if err := p.Expect(token.Identifier, token.String); err != nil {
+		value, err := p.parseValue()
+		if err != nil {
 			return nil, err
 		}
-		op = &ast.AttributeOperation{
-			Operator: operator,
-			Value:    p.Text(),
-		}
+		node.Value = value
 	}
 	for p.Accept(token.Space, token.Comment) {
 	}
 	if err := p.Expect(token.CloseBracket); err != nil {
 		return nil, err
 	}
-	return &ast.AttributeComponent{
-		Name:      name,
-		Operation: op,
-	}, nil
+	return node, nil
 }
 
 func (p *Parser) parseMediaRule() (*ast.MediaRule, error) {
@@ -570,7 +565,7 @@ func (p *Parser) parseKeyFramesRule() (*ast.KeyFramesRule, error) {
 	}, nil
 }
 
-func (p *Parser) parseKeyFrames() (keyframes []*ast.Keyframe, err error) {
+func (p *Parser) parseKeyFrames() (keyframes []*ast.KeyFrame, err error) {
 	if err := p.Expect(token.OpenCurly); err != nil {
 		return nil, err
 	}
@@ -591,7 +586,7 @@ func (p *Parser) parseKeyFrames() (keyframes []*ast.Keyframe, err error) {
 	return keyframes, nil
 }
 
-func (p *Parser) parseKeyFrame() (*ast.Keyframe, error) {
+func (p *Parser) parseKeyFrame() (*ast.KeyFrame, error) {
 	selectors, err := p.parseKeyFrameSelectors()
 	if err != nil {
 		return nil, err
@@ -602,13 +597,13 @@ func (p *Parser) parseKeyFrame() (*ast.Keyframe, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ast.Keyframe{
+	return &ast.KeyFrame{
 		Selectors:    selectors,
 		Declarations: decls,
 	}, nil
 }
 
-func (p *Parser) parseKeyFrameSelectors() (sels []ast.KeyframeSelector, err error) {
+func (p *Parser) parseKeyFrameSelectors() (sels []ast.KeyFrameSelector, err error) {
 	for !p.Is(token.OpenCurly) {
 		sel, err := p.parseKeyFrameSelector()
 		if err != nil {
@@ -629,7 +624,7 @@ func (p *Parser) parseKeyFrameSelectors() (sels []ast.KeyframeSelector, err erro
 	return sels, nil
 }
 
-func (p *Parser) parseKeyFrameSelector() (ast.KeyframeSelector, error) {
+func (p *Parser) parseKeyFrameSelector() (ast.KeyFrameSelector, error) {
 	switch {
 	case p.Accept(token.Identifier):
 		return &ast.Keyword{
@@ -914,13 +909,13 @@ func (p *Parser) parseValueList(parseUntil ...token.Type) (value ast.Value, err 
 			break
 		}
 		if p.Accept(token.Comma, token.Slash) {
-			values = append(values, &ast.Separator{
+			values = append(values, &ast.CombinatorComponent{
 				Value: p.Text(),
 			})
 			for p.Accept(token.Space, token.Comment) {
 			}
 		} else if hasSpace {
-			values = append(values, &ast.Separator{
+			values = append(values, &ast.CombinatorComponent{
 				Value: " ",
 			})
 		}

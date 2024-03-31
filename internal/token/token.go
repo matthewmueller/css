@@ -67,6 +67,7 @@ const (
 	TildeEqual       Type = "~="
 	PipeEqual        Type = "|="
 	Slash            Type = "/"
+	Ampersand        Type = "&"
 	Raw              Type = "raw"     //
 	String           Type = "string"  // "string" or 'string'
 	Comment          Type = "comment" // /* comment */ or // comment

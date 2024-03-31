@@ -223,13 +223,47 @@ func TestImports(t *testing.T) {
 	equal(t, `@import "style.css" layer;`, `@import url("style.css") layer();`)
 }
 
+func TestNested(t *testing.T) {
+	t.Skip("nested rules are not supported")
+	equal(t, `label { input { margin: 0 } }`, ``)
+	equal(t, `label { & input { margin: 0 } }`, ``)
+	equal(t, `label { input & { margin: 0 } }`, ``)
+	equal(t, `label { input>& { margin: 0 } }`, ``)
+	equal(t, `label { input~& { margin: 0 } }`, ``)
+	equal(t, `label { input+& { margin: 0 } }`, ``)
+	equal(t, `label { input & & & { margin: 0 } }`, ``)
+	equal(t, `label { &>input { margin: 0 } }`, ``)
+	equal(t, `label { &+input { margin: 0 } }`, ``)
+	equal(t, `label { &~input { margin: 0 } }`, ``)
+	equal(t, `label { &:hover { margin: 0 } }`, ``)
+	equal(t, `label { &:hover, &:focus { margin: 0 } }`, ``)
+	equal(t, `& { color: blue }`, ``)
+	equal(t, `&:hover { color: blue }`, ``)
+}
+
 func TestFile(t *testing.T) {
 	equalFile(t, "normalize.css")
 	equalFile(t, "preflight.css")
 	equalFile(t, "tachyons.css")
+	equalFile(t, "bootstrap4.css")
 	equalFile(t, "bootstrap.css")
 	equalFile(t, "basscss.min.css.txt")
 	equalFile(t, "bootstrap.min.css.txt")
 	equalFile(t, "github.com.css")
 	equalFile(t, "atom.io.css")
+	// equalFile(t, "tailwind.css")
+}
+
+func BenchmarkParseBootstrap4(b *testing.B) {
+	css, err := os.ReadFile("../testdata/bootstrap4.css")
+	if err != nil {
+		b.Fatal(err)
+	}
+	// run the Fib function b.N times
+	for n := 0; n < b.N; n++ {
+		_, err := parser.Parse("bootstrap4.css", string(css))
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
 }
