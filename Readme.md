@@ -2,12 +2,20 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/matthewmueller/css.svg)](https://pkg.go.dev/github.com/matthewmueller/css)
 
-WIP CSS lexer and parser for Go. Intended to be used for manipulating stylesheets.
+CSS lexer and parser for Go. Intended to be used for manipulating stylesheets.
 
-## Status
+## Usage
 
-- [x] Lexer
-- [ ] Parser
+```go
+input := `@media screen and (min-width: 480px) {
+  body {
+    background-color: lightgreen;
+  }
+}
+`
+ast, _ := css.Parse("input.css", input)
+fmt.Println(ast.String())
+```
 
 ## Similar
 
