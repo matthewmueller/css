@@ -4,6 +4,8 @@
 
 CSS lexer and parser for Go. Intended to be used for manipulating stylesheets.
 
+Fully parses bootstrap and several other popular CSS frameworks and website stylesheets.
+
 ## Usage
 
 ```go
