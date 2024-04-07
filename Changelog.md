@@ -1,3 +1,9 @@
+# 0.0.3 / 2024-04-07
+
+- add :global and @keyframe scoping support
+- add skipped scoped keyframe tests and remove partial support
+- remove unused code
+
 # 0.0.2 / 2024-03-31
 
 - add scoper for scoping css with a selector
