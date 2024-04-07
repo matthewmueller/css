@@ -93,19 +93,21 @@ func ScopeAST(path, scope string, stylesheet *ast.Stylesheet) (*ast.Stylesheet, 
 		keyframes[n.Name] = scoped
 		n.Name = scoped
 	}
+	// Need to do one more iteration to support @keyframes below declarations
 	animationVisitor := visitor.New()
-	animationVisitor.KeywordValue = func(n *ast.Keyword) {
-		if scoped, ok := keyframes[n.Name]; ok {
-			n.Name = scoped
-		}
-	}
-	selectorVisitor.Declaration = func(n *ast.Declaration) {
+	animationVisitor.Declaration = func(n *ast.Declaration) {
 		if n.Property != "animation-name" && n.Property != "animation" {
 			return
 		}
 		n.Value.Visit(animationVisitor)
 	}
+	animationVisitor.KeywordValue = func(n *ast.Keyword) {
+		if scoped, ok := keyframes[n.Name]; ok {
+			n.Name = scoped
+		}
+	}
 
 	stylesheet.Visit(selectorVisitor)
+	stylesheet.Visit(animationVisitor)
 	return stylesheet, nil
 }

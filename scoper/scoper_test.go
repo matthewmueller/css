@@ -115,6 +115,7 @@ func TestScopedKeyframe(t *testing.T) {
 	equal(t, "@keyframes slideIn { from { } to { } } header + footer { animation: 3s linear 1s slideIn; }", "@keyframes slideIn-jsx123 { from {  } to {  } }\nheader.jsx-123 + footer.jsx-123 { animation: 3s linear 1s slideIn-jsx123 }")
 	equal(t, "@keyframes slideOut { from { } to { } } header + footer { animation: slideOut 5s infinite; }", "@keyframes slideOut-jsx123 { from {  } to {  } }\nheader.jsx-123 + footer.jsx-123 { animation: slideOut-jsx123 5s infinite }")
 	equal(t, "@keyframes slideOut { from { } to { } } header + footer { animation-name: slideOut; }", "@keyframes slideOut-jsx123 { from {  } to {  } }\nheader.jsx-123 + footer.jsx-123 { animation-name: slideOut-jsx123 }")
+	equal(t, "header + footer { animation: slideOut 5s infinite; } @keyframes slideOut { from { } to { } }", "header.jsx-123 + footer.jsx-123 { animation: slideOut-jsx123 5s infinite }\n@keyframes slideOut-jsx123 { from {  } to {  } }")
 }
 
 func ExampleScope() {
