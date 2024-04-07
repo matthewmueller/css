@@ -4,7 +4,7 @@
 
 CSS lexer and parser for Go. Intended to be used for manipulating stylesheets.
 
-Fully parses bootstrap and several other popular CSS frameworks and website stylesheets.
+Fully parses Bootstrap 5 and several other popular CSS frameworks and website stylesheets.
 
 ## Usage
 
@@ -18,6 +18,23 @@ input := `@media screen and (min-width: 480px) {
 ast, _ := css.Parse("input.css", input)
 fmt.Println(ast.String())
 ```
+
+### Scoping
+
+This package supports scoping CSS with a selector
+
+```go
+input := `a:hover, span, .c, :global(#d) {
+  color: red;
+}`
+scoped, err := scoper.Scope("input.css", ".scoped", input)
+// a.scoped:hover, span.scoped, .c.scoped, #d { color: red }
+```
+
+## Planned
+
+- [ ] Parse Bootstrap 4
+- [ ] Nested `&` support
 
 ## Similar
 

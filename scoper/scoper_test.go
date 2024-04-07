@@ -1,6 +1,7 @@
 package scoper_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/matthewmueller/css/scoper"
@@ -99,9 +100,32 @@ func TestComplex(t *testing.T) {
 	equal(t, `.display-none{}`, ".display-none.jsx-123 {  }")
 }
 
+func TestGlobal(t *testing.T) {
+	equal(t, ":global(p) { color: blue; }", `p { color: blue }`)
+	equal(t, ":global(p) { color: blue; }", `p { color: blue }`)
+	equal(t, ":global(p), a { color: blue; }", `p, a.jsx-123 { color: blue }`)
+	equal(t, ":global(.foo + a) { color: red; }", `.foo + a { color: red }`)
+	equal(t, ":global(body) { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }", `body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif }`)
+	equal(t, "p :global(span) { background: blue; }", `p.jsx-123 span { background: blue }`)
+	equal(t, "p :global(span:not(.test)) { color: green; }", `p.jsx-123 span:not(.test) { color: green }`)
+	equal(t, `div :global(.react-select) { color: red; }`, `div.jsx-123 .react-select { color: red }`)
+}
+
 func TestScopedKeyframe(t *testing.T) {
-	t.Skip("scoped keyframes are not supported yet")
-	equal(t, "@keyframe slideIn { from { } to { } } header + footer { animation: 3s linear 1s slidein; }", ``)
-	equal(t, "@keyframe slideOut { from { } to { } } header + footer { animation: slideOut 5s infinite; }", ``)
-	equal(t, "@keyframe slideOut { from { } to { } } header + footer { animation-name: slideOut; }", ``)
+	equal(t, "@keyframes slideIn { from { } to { } } header + footer { animation: 3s linear 1s slideIn; }", "@keyframes slideIn-jsx123 { from {  } to {  } }\nheader.jsx-123 + footer.jsx-123 { animation: 3s linear 1s slideIn-jsx123 }")
+	equal(t, "@keyframes slideOut { from { } to { } } header + footer { animation: slideOut 5s infinite; }", "@keyframes slideOut-jsx123 { from {  } to {  } }\nheader.jsx-123 + footer.jsx-123 { animation: slideOut-jsx123 5s infinite }")
+	equal(t, "@keyframes slideOut { from { } to { } } header + footer { animation-name: slideOut; }", "@keyframes slideOut-jsx123 { from {  } to {  } }\nheader.jsx-123 + footer.jsx-123 { animation-name: slideOut-jsx123 }")
+}
+
+func ExampleScope() {
+	input := `a:hover, span, .c, :global(#d) {
+		color: red;
+	}`
+	scoped, err := scoper.Scope("input.css", ".scoped", input)
+	if err != nil {
+		os.Stdout.WriteString(err.Error())
+	}
+	os.Stdout.WriteString(scoped)
+	// Output:
+	// a.scoped:hover, span.scoped, .c.scoped, #d { color: red }
 }
