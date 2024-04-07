@@ -1,3 +1,7 @@
+# 0.0.4 / 2024-04-07
+
+- support scoping @keyframes that are after the original declaration
+
 # 0.0.3 / 2024-04-07
 
 - add :global and @keyframe scoping support
