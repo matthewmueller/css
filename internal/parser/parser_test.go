@@ -229,7 +229,7 @@ func TestImports(t *testing.T) {
 }
 
 func TestNested(t *testing.T) {
-	t.Skip("nested rules are not supported")
+	t.Skip("nested rules are not yet supported")
 	equal(t, `label { input { margin: 0 } }`, ``)
 	equal(t, `label { & input { margin: 0 } }`, ``)
 	equal(t, `label { input & { margin: 0 } }`, ``)
@@ -244,6 +244,15 @@ func TestNested(t *testing.T) {
 	equal(t, `label { &:hover, &:focus { margin: 0 } }`, ``)
 	equal(t, `& { color: blue }`, ``)
 	equal(t, `&:hover { color: blue }`, ``)
+}
+
+func TestCustomMedia(t *testing.T) {
+	t.Skip("custom media queries are not yet supported")
+	equal(t, `@custom-media --small-viewport (max-width: 30em);`, `@custom-media --small-viewport (max-width: 30em);`)
+	equal(t, `@custom-media --narrow-window (max-width: 30em);`, `@custom-media --narrow-window (max-width: 30em);`)
+	equal(t, `@custom-media --wide-window (min-width: 60em);`, `@custom-media --wide-window (min-width: 60em);`)
+	equal(t, `@custom-media --colorful (color);`, `@custom-media --colorful (color);`)
+	equal(t, `@custom-media --dark-background (prefers-color-scheme: dark);`, `@custom-media --dark-background (prefers-color-scheme: dark);`)
 }
 
 func TestFile(t *testing.T) {
