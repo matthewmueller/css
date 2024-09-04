@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -42,6 +43,13 @@ func (p *Parser) Text() string {
 
 func (p *Parser) Type() token.Type {
 	return p.l.Token.Type
+}
+
+func (p *Parser) Error() error {
+	if p.l.Token.Error == "" {
+		return nil
+	}
+	return errors.New(p.l.Token.Error)
 }
 
 // Checks that the next token is one of the given types
@@ -172,7 +180,7 @@ func (p *Parser) parseAtRule() (ast.Rule, error) {
 }
 
 func (p *Parser) parseSelectors() (selectors []*ast.Selector, err error) {
-	for !p.Is(token.OpenCurly) {
+	for !p.Is(token.EOF, token.Error, token.OpenCurly) {
 		selector, err := p.parseSelector()
 		if err != nil {
 			return nil, err
@@ -183,6 +191,11 @@ func (p *Parser) parseSelectors() (selectors []*ast.Selector, err error) {
 		p.Accept(token.Comma)
 		for p.Accept(token.Space, token.Comment) {
 		}
+	}
+	if p.Is(token.Error) {
+		return nil, fmt.Errorf("selector error: %s", p.Error())
+	} else if p.Is(token.EOF) {
+		return nil, fmt.Errorf("unexpected eof")
 	}
 	return selectors, nil
 }
@@ -715,7 +728,7 @@ func (p *Parser) parseSupportsCondition() (*ast.SupportsCondition, error) {
 	condition.Field = field
 
 	// Handle and/or conditions
-	for {
+	for !p.Is(token.EOF, token.Error) {
 		for p.Accept(token.Space, token.Comment) {
 		}
 		next = p.l.Peak(1)
@@ -734,6 +747,11 @@ func (p *Parser) parseSupportsCondition() (*ast.SupportsCondition, error) {
 		}
 		child.Field = field
 		condition.Children = append(condition.Children, child)
+	}
+	if p.Is(token.Error) {
+		return nil, fmt.Errorf("supports rule error: %s", p.Error())
+	} else if p.Is(token.EOF) {
+		return nil, fmt.Errorf("unexpected EOF")
 	}
 	return condition, nil
 }
@@ -1039,9 +1057,14 @@ func (p *Parser) parseNumberValue() (ast.Value, error) {
 func (p *Parser) parseRawValue() (ast.Value, error) {
 	sb := strings.Builder{}
 	sb.WriteString(p.Text())
-	for !p.Is(token.Semicolon, token.Exclamation, token.CloseBracket, token.CloseParen, token.CloseCurly, token.Comma) {
+	for !p.Is(token.EOF, token.Error, token.Semicolon, token.Exclamation, token.CloseBracket, token.CloseParen, token.CloseCurly, token.Comma) {
 		p.l.Next()
 		sb.WriteString(p.Text())
+	}
+	if p.Is(token.Error) {
+		return nil, fmt.Errorf("raw value error: %s", p.Error())
+	} else if p.Is(token.EOF) {
+		return nil, fmt.Errorf("unexpected eof")
 	}
 	return &ast.RawValue{
 		Value: strings.TrimSpace(sb.String()),
@@ -1054,7 +1077,7 @@ func (p *Parser) parseArguments(name string) (args []ast.Argument, err error) {
 	}
 	for p.Accept(token.Space, token.Comment) {
 	}
-	for !p.Is(token.CloseParen) {
+	for !p.Is(token.EOF, token.Error, token.CloseParen) {
 		arg, err := p.parseArgument(name)
 		if err != nil {
 			return nil, err
@@ -1065,6 +1088,11 @@ func (p *Parser) parseArguments(name string) (args []ast.Argument, err error) {
 		p.Accept(token.Comma)
 		for p.Accept(token.Space, token.Comment) {
 		}
+	}
+	if p.Is(token.Error) {
+		return nil, fmt.Errorf("argument value error: %s", p.Error())
+	} else if p.Is(token.EOF) {
+		return nil, fmt.Errorf("unexpected eof")
 	}
 	if err := p.Expect(token.CloseParen); err != nil {
 		return nil, err

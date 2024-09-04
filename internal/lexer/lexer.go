@@ -133,12 +133,12 @@ func (l *Lexer) errorf(msg string, args ...interface{}) token.Type {
 	return token.Error
 }
 
-func (l *Lexer) unexpected() token.Type {
+func (l *Lexer) unexpected(state string) token.Type {
 	consumed := l.input[l.start:l.end]
 	if l.cp == eof && len(consumed) == 0 {
 		return l.errorf("unexpected end of input")
 	}
-	return l.errorf("unexpected tokens '%s'", consumed)
+	return l.errorf("unexpected tokens '%s' in %q state", consumed, state)
 }
 
 func initialState(l *Lexer) (t token.Type) {
@@ -240,14 +240,14 @@ func initialState(l *Lexer) (t token.Type) {
 		for l.cp != '{' && l.cp != eof {
 			l.step()
 		}
-		return l.unexpected()
+		return l.unexpected("initial")
 	}
 }
 
 func blockState(l *Lexer) token.Type {
 	switch {
 	case l.cp == eof:
-		return l.unexpected()
+		return l.unexpected("block")
 	case l.cp == '}':
 		l.step()
 		l.popState()
@@ -268,7 +268,7 @@ func blockState(l *Lexer) token.Type {
 			return commentState(l)
 		}
 		return token.Slash
-	case isAlpha(l.cp) || l.cp == '_':
+	case isAlpha(l.cp) || l.cp == '_' || l.cp == '$':
 		l.step()
 		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) || l.cp == '_' {
 			l.step()
@@ -381,21 +381,21 @@ func blockState(l *Lexer) token.Type {
 			l.step()
 			return token.Comment
 		}
-		return l.unexpected()
+		return l.unexpected("block")
 	default:
 		l.step()
 		for l.cp != '}' && l.cp != eof {
 			l.step()
 		}
 		l.popState()
-		return l.unexpected()
+		return l.unexpected("block")
 	}
 }
 
 func parenState(l *Lexer) token.Type {
 	switch {
 	case l.cp == eof:
-		return l.unexpected()
+		return l.unexpected("paren")
 	case l.cp == ')':
 		l.step()
 		l.popState()
@@ -524,14 +524,14 @@ func parenState(l *Lexer) token.Type {
 			l.step()
 		}
 		l.popState()
-		return l.unexpected()
+		return l.unexpected("paren")
 	}
 }
 
 func bracketState(l *Lexer) token.Type {
 	switch {
 	case l.cp == eof:
-		return l.unexpected()
+		return l.unexpected("bracket")
 	case l.cp == ']':
 		l.step()
 		l.popState()
@@ -557,7 +557,7 @@ func bracketState(l *Lexer) token.Type {
 			l.step()
 			return token.CaretEqual
 		}
-		return l.unexpected()
+		return l.unexpected("bracket")
 	case l.cp == '=':
 		l.step()
 		return token.Equal
@@ -596,35 +596,35 @@ func bracketState(l *Lexer) token.Type {
 			l.step()
 			return token.StarEqual
 		}
-		return l.unexpected()
+		return l.unexpected("bracket")
 	case l.cp == '~':
 		l.step()
 		if l.cp == '=' {
 			l.step()
 			return token.TildeEqual
 		}
-		return l.unexpected()
+		return l.unexpected("bracket")
 	case l.cp == '|':
 		l.step()
 		if l.cp == '=' {
 			l.step()
 			return token.PipeEqual
 		}
-		return l.unexpected()
+		return l.unexpected("bracket")
 	case l.cp == '$':
 		l.step()
 		if l.cp == '=' {
 			l.step()
 			return token.DollarEqual
 		}
-		return l.unexpected()
+		return l.unexpected("bracket")
 	default:
 		l.step()
 		for l.cp != ']' && l.cp != eof {
 			l.step()
 		}
 		l.popState()
-		return l.unexpected()
+		return l.unexpected("bracket")
 	}
 }
 
@@ -633,7 +633,7 @@ func stringState(l *Lexer, end rune) (t token.Type) {
 		switch {
 		case l.cp == eof:
 			l.popState()
-			return l.unexpected()
+			return l.unexpected("string")
 		case l.cp == end:
 			l.step()
 			return token.String
@@ -671,7 +671,7 @@ func startUrlState(l *Lexer) token.Type {
 func urlState(l *Lexer) token.Type {
 	switch l.cp {
 	case eof, '(', '\n':
-		return l.unexpected()
+		return l.unexpected("url")
 	case ')':
 		l.step()
 		l.popState()
@@ -695,7 +695,7 @@ func commentState(l *Lexer) token.Type {
 	for {
 		switch {
 		case l.cp == eof:
-			return l.unexpected()
+			return l.unexpected("comment")
 		case l.cp == '*':
 			l.step()
 			if l.cp == '/' {

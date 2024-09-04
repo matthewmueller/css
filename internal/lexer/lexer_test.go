@@ -418,3 +418,8 @@ func TestFile(t *testing.T) {
 	equalFile(t, "github.com.css")
 	// equalFile(t, "tailwind.css")
 }
+
+func TestDollar(t *testing.T) {
+	equal(t, `label { color: $red; }`, `ident:"label" space:" " { space:" " ident:"color" : space:" " ident:"$red" ; space:" " }`)
+	equal(t, `.container { font-color: $red; }`, `. ident:"container" space:" " { space:" " ident:"font-color" : space:" " ident:"$red" ; space:" " }`)
+}

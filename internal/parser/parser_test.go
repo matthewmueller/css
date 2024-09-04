@@ -281,3 +281,32 @@ func BenchmarkParseBootstrap4(b *testing.B) {
 		}
 	}
 }
+
+func TestInvalidInterpolation(t *testing.T) {
+	equal(t, `
+		.container {
+			font-color: {{ red }};
+		}
+	`, `parser: rule unexpected token } (line 3)`)
+}
+
+func TestCSSVariables(t *testing.T) {
+	equal(t, `
+		.container {
+			--var-red: red;
+			font-color: var(--var-red);
+		}
+	`, `.container { --var-red: red; font-color: var(--var-red) }`)
+}
+
+func TestArbitraryFunctions(t *testing.T) {
+	equal(t, `
+		.container {
+			font-color: templ(red);
+		}
+	`, `.container { font-color: templ(red) }`)
+}
+
+func TestDollarVariables(t *testing.T) {
+	equal(t, `.container { font-color: $red; }`, `.container { font-color: $red }`)
+}
