@@ -281,3 +281,11 @@ func BenchmarkParseBootstrap4(b *testing.B) {
 		}
 	}
 }
+
+func TestVariableInterpolation(t *testing.T) {
+	equal(t, `
+		.container {
+			font-color: {{ red }};
+		}
+	`, `parser: rule unexpected token } (line 3)`)
+}
