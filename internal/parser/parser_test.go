@@ -310,3 +310,8 @@ func TestArbitraryFunctions(t *testing.T) {
 func TestDollarVariables(t *testing.T) {
 	equal(t, `.container { font-color: $red; }`, `.container { font-color: $red }`)
 }
+
+func TestBlockQuote(t *testing.T) {
+	equal(t, `blockquote { quotes: "“" "”" "‘" "’"; }`, `blockquote { quotes: "“" "”" "‘" "’" }`)
+	equal(t, `blockquote { quotes: '“' '”' '‘' '’'; }`, `blockquote { quotes: '“' '”' '‘' '’' }`)
+}

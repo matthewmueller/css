@@ -118,6 +118,11 @@ func TestScopedKeyframe(t *testing.T) {
 	equal(t, "header + footer { animation: slideOut 5s infinite; } @keyframes slideOut { from { } to { } }", "header.jsx-123 + footer.jsx-123 { animation: slideOut-jsx123 5s infinite }\n@keyframes slideOut-jsx123 { from {  } to {  } }")
 }
 
+func TestBlockQuote(t *testing.T) {
+	equal(t, `blockquote { quotes: "“" "”" "‘" "’"; }`, `blockquote.jsx-123 { quotes: "“" "”" "‘" "’" }`)
+	equal(t, `blockquote { quotes: '“' '”' '‘' '’'; }`, `blockquote.jsx-123 { quotes: '“' '”' '‘' '’' }`)
+}
+
 func ExampleScope() {
 	input := `a:hover, span, .c, :global(#d) {
 		color: red;

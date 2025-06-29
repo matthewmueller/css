@@ -423,3 +423,8 @@ func TestDollar(t *testing.T) {
 	equal(t, `label { color: $red; }`, `ident:"label" space:" " { space:" " ident:"color" : space:" " ident:"$red" ; space:" " }`)
 	equal(t, `.container { font-color: $red; }`, `. ident:"container" space:" " { space:" " ident:"font-color" : space:" " ident:"$red" ; space:" " }`)
 }
+
+func TestBlockQuote(t *testing.T) {
+	equal(t, `blockquote { quotes: "“" "”" "‘" "’"; }`, `ident:"blockquote" space:" " { space:" " ident:"quotes" : space:" " string:"\"“\"" space:" " string:"\"”\"" space:" " string:"\"‘\"" space:" " string:"\"’\"" ; space:" " }`)
+	equal(t, `blockquote { quotes: '“' '”' '‘' '’'; }`, `ident:"blockquote" space:" " { space:" " ident:"quotes" : space:" " string:"'“'" space:" " string:"'”'" space:" " string:"'‘'" space:" " string:"'’'" ; space:" " }`)
+}
