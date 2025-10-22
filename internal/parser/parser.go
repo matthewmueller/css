@@ -897,7 +897,7 @@ func (p *Parser) parseDeclaration() (*ast.Declaration, error) {
 	if err != nil {
 		return nil, err
 	}
-	for p.Accept(token.Space, token.Comment) {
+	for p.Accept(token.Space, token.Comment, token.Esc) {
 	}
 	important := false
 	if p.Accept(token.Exclamation) {
@@ -921,7 +921,7 @@ func (p *Parser) parseDeclaration() (*ast.Declaration, error) {
 }
 
 func (p *Parser) parseDeclarationValue() (value ast.Value, err error) {
-	return p.parseValueList(token.Semicolon, token.CloseCurly, token.Exclamation)
+	return p.parseValueList(token.Semicolon, token.CloseCurly, token.Exclamation, token.Esc)
 }
 
 func (p *Parser) parseParenValue() (value ast.Value, err error) {

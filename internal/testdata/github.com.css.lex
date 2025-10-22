@@ -15783,7 +15783,7 @@ ident:"padding-right"
 space:" "
 number:"8"
 ident:"px"
-comment:"\\9"
+esc:"\\9"
 ;
 space:"\n"
 space:"  "
@@ -15815,7 +15815,7 @@ ident:"background-image"
 :
 space:" "
 ident:"none"
-comment:"\\9"
+esc:"\\9"
 ;
 space:"\n"
 space:"  "

@@ -255,19 +255,6 @@ func TestCustomMedia(t *testing.T) {
 	equal(t, `@custom-media --dark-background (prefers-color-scheme: dark);`, `@custom-media --dark-background (prefers-color-scheme: dark);`)
 }
 
-func TestFile(t *testing.T) {
-	equalFile(t, "normalize.css")
-	equalFile(t, "preflight.css")
-	equalFile(t, "tachyons.css")
-	equalFile(t, "bootstrap4.css")
-	equalFile(t, "bootstrap.css")
-	equalFile(t, "basscss.min.css.txt")
-	equalFile(t, "bootstrap.min.css.txt")
-	equalFile(t, "github.com.css")
-	equalFile(t, "atom.io.css")
-	// equalFile(t, "tailwind.css")
-}
-
 func BenchmarkParseBootstrap4(b *testing.B) {
 	css, err := os.ReadFile("../testdata/bootstrap4.css")
 	if err != nil {
@@ -314,4 +301,28 @@ func TestDollarVariables(t *testing.T) {
 func TestBlockQuote(t *testing.T) {
 	equal(t, `blockquote { quotes: "“" "”" "‘" "’"; }`, `blockquote { quotes: "“" "”" "‘" "’" }`)
 	equal(t, `blockquote { quotes: '“' '”' '‘' '’'; }`, `blockquote { quotes: '“' '”' '‘' '’' }`)
+}
+
+func TestEscape(t *testing.T) {
+	equal(t, `.focus\:sr-only:focus {}`, `.focus\:sr-only:focus {  }`)
+	equal(t, `.w-3\/6 { width: 50%; }`, `.w-3\/6 { width: 50% }`)
+	equal(t, `.w-3/6 { width: 50%; }`, `parser: selector unexpected token / (line 1)`)
+	equal(t, `.p-2 { padding-right: 8px\9; }`, `.p-2 { padding-right: 8px }`)
+	equal(t, `.p-2 { padding-right: 8px \9; }`, `.p-2 { padding-right: 8px }`)
+	equal(t, `.p-2 \9 { padding-right: 8px; }`, `parser: selector unexpected token esc:"\\9" (line 1)`)
+	equal(t, `\009A { padding-right: 8px; }`, `\009A { padding-right: 8px }`)
+	equal(t, `.\009A { padding-right: 8px; }`, `.\009A { padding-right: 8px }`)
+}
+
+func TestFile(t *testing.T) {
+	equalFile(t, "normalize.css")
+	equalFile(t, "preflight.css")
+	equalFile(t, "tachyons.css")
+	equalFile(t, "bootstrap4.css")
+	equalFile(t, "bootstrap.css")
+	equalFile(t, "basscss.min.css.txt")
+	equalFile(t, "bootstrap.min.css.txt")
+	equalFile(t, "atom.io.css")
+	equalFile(t, "github.com.css")
+	equalFile(t, "tailwind.css")
 }

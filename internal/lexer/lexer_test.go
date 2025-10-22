@@ -406,6 +406,31 @@ func TestNested(t *testing.T) {
 	equal(t, `&:hover { color: blue }`, `& : ident:"hover" space:" " { space:" " ident:"color" : space:" " ident:"blue" space:" " }`)
 }
 
+func TestDollar(t *testing.T) {
+	equal(t, `label { color: $red; }`, `ident:"label" space:" " { space:" " ident:"color" : space:" " ident:"$red" ; space:" " }`)
+	equal(t, `.container { font-color: $red; }`, `. ident:"container" space:" " { space:" " ident:"font-color" : space:" " ident:"$red" ; space:" " }`)
+}
+
+func TestBlockQuote(t *testing.T) {
+	equal(t, `blockquote { quotes: "“" "”" "‘" "’"; }`, `ident:"blockquote" space:" " { space:" " ident:"quotes" : space:" " string:"\"“\"" space:" " string:"\"”\"" space:" " string:"\"‘\"" space:" " string:"\"’\"" ; space:" " }`)
+	equal(t, `blockquote { quotes: '“' '”' '‘' '’'; }`, `ident:"blockquote" space:" " { space:" " ident:"quotes" : space:" " string:"'“'" space:" " string:"'”'" space:" " string:"'‘'" space:" " string:"'’'" ; space:" " }`)
+}
+
+func TestEscape(t *testing.T) {
+	equal(t, `.w-3\/6 { width: 50%; }`, `. ident:"w-3\\/6" space:" " { space:" " ident:"width" : space:" " number:"50" percent:"%" ; space:" " }`)
+	equal(t, `.focus\:sr-only:focus {}`, `. ident:"focus\\:sr-only" : ident:"focus" space:" " { }`)
+	equal(t, `.w-3/6 { width: 50%; }`, `. ident:"w-3" / error:"unexpected tokens '6 ' in \"initial\" state" { space:" " ident:"width" : space:" " number:"50" percent:"%" ; space:" " }`)
+	equal(t, `.p-2 { padding-right: 8px\9; }`, `. ident:"p-2" space:" " { space:" " ident:"padding-right" : space:" " number:"8" ident:"px" esc:"\\9" ; space:" " }`)
+	equal(t, `.p-2 { padding-right: 8px \9; }`, `. ident:"p-2" space:" " { space:" " ident:"padding-right" : space:" " number:"8" ident:"px" space:" " esc:"\\9" ; space:" " }`)
+	equal(t, `.p-2 \9 { padding-right: 8px; }`, `. ident:"p-2" space:" " esc:"\\9" space:" " { space:" " ident:"padding-right" : space:" " number:"8" ident:"px" ; space:" " }`)
+	equal(t, `\009A { padding-right: 8px; }`, `ident:"\\009A" space:" " { space:" " ident:"padding-right" : space:" " number:"8" ident:"px" ; space:" " }`)
+}
+
+func TestOnlySelector(t *testing.T) {
+	equal(t, `.scope`, `. ident:"scope"`)
+	equal(t, `scope`, `ident:"scope"`)
+}
+
 func TestFile(t *testing.T) {
 	equalFile(t, "normalize.css")
 	equalFile(t, "preflight.css")
@@ -416,15 +441,5 @@ func TestFile(t *testing.T) {
 	equalFile(t, "bootstrap.min.css.txt")
 	equalFile(t, "atom.io.css")
 	equalFile(t, "github.com.css")
-	// equalFile(t, "tailwind.css")
-}
-
-func TestDollar(t *testing.T) {
-	equal(t, `label { color: $red; }`, `ident:"label" space:" " { space:" " ident:"color" : space:" " ident:"$red" ; space:" " }`)
-	equal(t, `.container { font-color: $red; }`, `. ident:"container" space:" " { space:" " ident:"font-color" : space:" " ident:"$red" ; space:" " }`)
-}
-
-func TestBlockQuote(t *testing.T) {
-	equal(t, `blockquote { quotes: "“" "”" "‘" "’"; }`, `ident:"blockquote" space:" " { space:" " ident:"quotes" : space:" " string:"\"“\"" space:" " string:"\"”\"" space:" " string:"\"‘\"" space:" " string:"\"’\"" ; space:" " }`)
-	equal(t, `blockquote { quotes: '“' '”' '‘' '’'; }`, `ident:"blockquote" space:" " { space:" " ident:"quotes" : space:" " string:"'“'" space:" " string:"'”'" space:" " string:"'‘'" space:" " string:"'’'" ; space:" " }`)
+	equalFile(t, "tailwind.css")
 }

@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -48,7 +49,6 @@ type Lexer struct {
 	next  int         // Index to the next rune to be considered
 	line  int         // Line number
 	err   string      // Error message for an error token
-	prev  rune        // Previous rune
 
 	states []state // Stack of states
 	peaked []token.Token
@@ -114,10 +114,17 @@ func (l *Lexer) step() {
 	if width == 0 {
 		codePoint = eof
 	}
-	l.prev = l.cp
 	l.cp = codePoint
 	l.end = l.next
 	l.next += width
+}
+
+func (l *Lexer) peak() rune {
+	codePoint, width := utf8.DecodeRuneInString(l.input[l.next:])
+	if width == 0 {
+		codePoint = eof
+	}
+	return codePoint
 }
 
 func (l *Lexer) pushState(state state) {
@@ -159,10 +166,9 @@ func initialState(l *Lexer) (t token.Type) {
 		return token.Hash
 	case isAlpha(l.cp):
 		l.step()
-		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) || l.cp == '_' {
-			l.step()
-		}
-		return token.Identifier
+		return identifierState(l)
+	case isBackslash(l.cp):
+		return identifierState(l)
 	case l.cp == '/':
 		l.step()
 		if l.cp == '*' {
@@ -174,10 +180,7 @@ func initialState(l *Lexer) (t token.Type) {
 		l.step()
 		if isAlpha(l.cp) {
 			l.step()
-			for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
-				l.step()
-			}
-			return token.Identifier
+			return identifierState(l)
 		}
 		return token.Dash
 	case l.cp == '@':
@@ -270,14 +273,14 @@ func blockState(l *Lexer) token.Type {
 		return token.Slash
 	case isAlpha(l.cp) || l.cp == '_' || l.cp == '$':
 		l.step()
-		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) || l.cp == '_' {
-			l.step()
-		}
+		identifier := identifierState(l)
 		// Handle url() function
 		if l.cp == '(' && l.input[l.start:l.end] == "url" {
 			l.pushState(startUrlState)
 		}
-		return token.Identifier
+		return identifier
+	case isBackslash(l.cp):
+		return identifierState(l)
 	case l.cp == '*':
 		l.step()
 		return token.Star
@@ -374,14 +377,6 @@ func blockState(l *Lexer) token.Type {
 	case l.cp == '&':
 		l.step()
 		return token.Ampersand
-	case l.cp == '\\':
-		l.step()
-		if l.cp == '9' {
-			// Ignore IE9 hack \9
-			l.step()
-			return token.Comment
-		}
-		return l.unexpected("block")
 	default:
 		l.step()
 		for l.cp != '}' && l.cp != eof {
@@ -411,10 +406,7 @@ func parenState(l *Lexer) token.Type {
 		return token.Space
 	case isAlpha(l.cp):
 		l.step()
-		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
-			l.step()
-		}
-		return token.Identifier
+		return identifierState(l)
 	case l.cp == ':':
 		l.step()
 		return token.Colon
@@ -547,10 +539,7 @@ func bracketState(l *Lexer) token.Type {
 		return token.Space
 	case isAlpha(l.cp):
 		l.step()
-		for isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) {
-			l.step()
-		}
-		return token.Identifier
+		return identifierState(l)
 	case l.cp == '^':
 		l.step()
 		if l.cp == '=' {
@@ -637,7 +626,7 @@ func stringState(l *Lexer, end rune) (t token.Type) {
 		case l.cp == end:
 			l.step()
 			return token.String
-		case l.cp == '\\':
+		case isBackslash(l.cp):
 			l.step()
 			if l.cp == end {
 				l.step()
@@ -710,6 +699,67 @@ func commentState(l *Lexer) token.Type {
 	}
 }
 
+func identifierState(l *Lexer) token.Type {
+	for {
+		switch {
+		case isAlpha(l.cp) || isNumeric(l.cp) || isDash(l.cp) || l.cp == '_':
+			l.step()
+		case isBackslash(l.cp):
+			cp := l.peak()
+			switch {
+			case cp == eof || isSpace(cp) || isNewline(cp):
+				return l.unexpected("identifier")
+			case isHex(cp):
+				hex := readHex(l.input[l.next:])
+				val, err := strconv.ParseUint(hex, 16, 64)
+				if err != nil {
+					return l.errorf("invalid escape sequence in identifier")
+				}
+				// This is pretty messy, but we basically want to only split our
+				// identifier token up if it contains control characters.
+				if isHexCtrl(int(val)) {
+					// This hack handles the case where it's a standalone escape "div \9 {}"
+					if l.start == l.end {
+						// consume the backslash
+						l.step()
+						// consume hex digits
+						for isHex(l.cp) {
+							l.step()
+						}
+						return token.Esc
+					}
+					l.pushState(escapeControlState)
+					return token.Identifier
+				}
+				// consume backslash
+				l.step()
+				// consume hex digits and continue on
+				for i := 0; i < len(hex); i++ {
+					l.step()
+				}
+			default:
+				// consume backslash
+				l.step()
+				// consume escaped character
+				l.step()
+			}
+		default:
+			return token.Identifier
+		}
+	}
+}
+
+func escapeControlState(l *Lexer) token.Type {
+	// consume the backslash
+	l.step()
+	// consume hex digits
+	for isHex(l.cp) {
+		l.step()
+	}
+	l.popState()
+	return token.Esc
+}
+
 func isAlpha(cp rune) bool {
 	return (cp >= 'a' && cp <= 'z') || (cp >= 'A' && cp <= 'Z')
 }
@@ -722,6 +772,10 @@ func isNumeric(cp rune) bool {
 	return cp >= '0' && cp <= '9'
 }
 
+func isHex(cp rune) bool {
+	return (cp >= '0' && cp <= '9') || (cp >= 'a' && cp <= 'f') || (cp >= 'A' && cp <= 'F')
+}
+
 func isDash(cp rune) bool {
 	return cp == '-'
 }
@@ -732,4 +786,25 @@ func isSpace(cp rune) bool {
 
 func isNewline(cp rune) bool {
 	return cp == '\n'
+}
+
+// Read next hex digits from the input
+func readHex(s string) string {
+	var hs strings.Builder
+	// consume up to 6 hex digits
+	for i, ch := range s {
+		if i >= 6 || !isHex(ch) {
+			break
+		}
+		hs.WriteRune(ch)
+	}
+	return hs.String()
+}
+
+func isHexCtrl(val int) bool {
+	return val >= 0 && val <= 31 || val == 127
+}
+
+func isBackslash(cp rune) bool {
+	return cp == '\\'
 }

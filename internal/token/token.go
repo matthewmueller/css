@@ -68,7 +68,7 @@ const (
 	PipeEqual        Type = "|="
 	Slash            Type = "/"
 	Ampersand        Type = "&"
-	Raw              Type = "raw"     //
+	Esc              Type = "esc"     // escape control sequence e.g. \9
 	String           Type = "string"  // "string" or 'string'
 	Comment          Type = "comment" // /* comment */ or // comment
 )
